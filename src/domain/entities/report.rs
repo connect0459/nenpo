@@ -1,3 +1,4 @@
+use crate::domain::entities::document_content::DocumentContent;
 use crate::domain::entities::github_activity::GitHubActivity;
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
@@ -11,6 +12,7 @@ pub struct Report {
     period_from: NaiveDate,
     period_to: NaiveDate,
     github_activity: GitHubActivity,
+    documents: Vec<DocumentContent>,
 }
 
 impl Report {
@@ -22,6 +24,7 @@ impl Report {
         period_from: NaiveDate,
         period_to: NaiveDate,
         github_activity: GitHubActivity,
+        documents: Vec<DocumentContent>,
     ) -> Self {
         Self {
             year,
@@ -29,6 +32,7 @@ impl Report {
             period_from,
             period_to,
             github_activity,
+            documents,
         }
     }
 
@@ -61,6 +65,12 @@ impl Report {
     pub fn github_activity(&self) -> &GitHubActivity {
         &self.github_activity
     }
+
+    /// Returns the documents
+    #[allow(dead_code)] // Temporarily allowed during TDD implementation
+    pub fn documents(&self) -> &[DocumentContent] {
+        &self.documents
+    }
 }
 
 #[cfg(test)]
@@ -74,12 +84,39 @@ mod tests {
         let from = NaiveDate::from_ymd_opt(2024, 4, 1).expect("Invalid date");
         let to = NaiveDate::from_ymd_opt(2025, 3, 31).expect("Invalid date");
 
-        let report = Report::new(2024, "個人".to_string(), from, to, activity.clone());
+        let report = Report::new(2024, "個人".to_string(), from, to, activity.clone(), vec![]);
 
         assert_eq!(report.year(), 2024);
         assert_eq!(report.department_name(), "個人");
         assert_eq!(report.period_from(), from);
         assert_eq!(report.period_to(), to);
         assert_eq!(report.github_activity(), &activity);
+        assert_eq!(report.documents().len(), 0);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn ドキュメント付きでレポートを作成できる() {
+        let activity = GitHubActivity::new(100, 20, 15, 30);
+        let from = NaiveDate::from_ymd_opt(2024, 4, 1).expect("Invalid date");
+        let to = NaiveDate::from_ymd_opt(2025, 3, 31).expect("Invalid date");
+
+        let documents = vec![
+            DocumentContent::new("doc1.md".to_string(), "Content 1".to_string()),
+            DocumentContent::new("doc2.md".to_string(), "Content 2".to_string()),
+        ];
+
+        let report = Report::new(
+            2024,
+            "個人".to_string(),
+            from,
+            to,
+            activity,
+            documents.clone(),
+        );
+
+        assert_eq!(report.documents().len(), 2);
+        assert_eq!(report.documents()[0].file_path(), "doc1.md");
+        assert_eq!(report.documents()[1].file_path(), "doc2.md");
     }
 }

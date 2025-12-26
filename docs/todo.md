@@ -30,7 +30,12 @@
   - [x] CommandExecutorトレイト定義
   - [x] GraphQL API実装
   - [x] MockCommandExecutorによるテスト
-- [ ] ローカルドキュメント読み込み
+- [x] ローカルドキュメント読み込み
+  - [x] DocumentContentエンティティ
+  - [x] DocumentRepositoryトレイト
+  - [x] LocalFileDocumentRepository実装
+  - [x] Reportエンティティへのドキュメント情報追加
+  - [x] Markdown出力へのドキュメントセクション追加
 - [ ] 複数部門のサポート
 - [ ] JSON/HTML形式での出力
 - [ ] Conventional Commitsによるテーマ別要約
