@@ -1,6 +1,9 @@
 use crate::domain::entities::commit::Commit;
 use crate::domain::entities::github_activity::GitHubActivity;
 use crate::domain::repositories::github_repository::GitHubRepository;
+use crate::domain::services::progress_reporter::ProgressReporter;
+use crate::infrastructure::cache::{CommitCache, NoOpCache};
+use crate::infrastructure::github::retry_handler::{with_retry, RetryConfig};
 use crate::infrastructure::github::CommandExecutor;
 use anyhow::{Context, Result};
 use chrono::{DateTime, NaiveDate, Utc};
@@ -146,15 +149,45 @@ struct CommitAuthor {
 
 /// GitHub repository implementation using gh command
 #[allow(dead_code)] // Phase 2: Will be used when integrated into main application
-pub struct GhCommandRepository<E: CommandExecutor> {
+pub struct GhCommandRepository<E: CommandExecutor, P: ProgressReporter, C: CommitCache> {
     executor: E,
+    progress_reporter: P,
+    retry_config: RetryConfig,
+    cache: Option<C>,
 }
 
-impl<E: CommandExecutor> GhCommandRepository<E> {
-    /// Creates a new GhCommandRepository instance
+impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepository<E, P, C> {
+    /// Creates a new GhCommandRepository instance with default retry configuration and cache
     #[allow(dead_code)] // Phase 2: Will be used when integrated into main application
-    pub fn new(executor: E) -> Self {
-        Self { executor }
+    pub fn new(executor: E, progress_reporter: P, cache: C) -> Self {
+        Self {
+            executor,
+            progress_reporter,
+            retry_config: RetryConfig::default(),
+            cache: Some(cache),
+        }
+    }
+
+    /// Creates a new GhCommandRepository instance without cache
+    #[allow(dead_code)]
+    pub fn without_cache(executor: E, progress_reporter: P) -> GhCommandRepository<E, P, NoOpCache> {
+        GhCommandRepository {
+            executor,
+            progress_reporter,
+            retry_config: RetryConfig::default(),
+            cache: None,
+        }
+    }
+
+    /// Creates a new GhCommandRepository instance with custom retry configuration
+    #[allow(dead_code)]
+    pub fn with_retry_config(executor: E, progress_reporter: P, cache: C, retry_config: RetryConfig) -> Self {
+        Self {
+            executor,
+            progress_reporter,
+            retry_config,
+            cache: Some(cache),
+        }
     }
 
     #[allow(dead_code)] // Phase 2: Will be used when integrated into main application
@@ -377,7 +410,7 @@ impl<E: CommandExecutor> GhCommandRepository<E> {
     }
 }
 
-impl<E: CommandExecutor> GitHubRepository for GhCommandRepository<E> {
+impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GitHubRepository for GhCommandRepository<E, P, C> {
     fn fetch_activity(
         &self,
         org_or_user: &str,
@@ -399,6 +432,16 @@ impl<E: CommandExecutor> GitHubRepository for GhCommandRepository<E> {
         from: NaiveDate,
         to: NaiveDate,
     ) -> Result<Vec<Commit>> {
+        // Check cache first
+        if let Some(ref cache) = self.cache {
+            if let Some(cached_commits) = cache.get(org_or_user, from, to)? {
+                eprintln!("✓ Using cached commits for {} ({} commits)", org_or_user, cached_commits.len());
+                return Ok(cached_commits);
+            }
+        }
+
+        self.progress_reporter.start_fetching_commits(org_or_user);
+
         let mut all_commits = Vec::new();
         let mut after_cursor: Option<String> = None;
 
@@ -410,13 +453,20 @@ impl<E: CommandExecutor> GitHubRepository for GhCommandRepository<E> {
                 to,
                 after_cursor.as_deref(),
             );
-            let response = self
-                .executor
-                .execute("gh", &["api", "graphql", "-f", &format!("query={}", query)])
-                .context("Failed to execute gh command for commits")?;
+
+            // Execute with retry
+            let response = with_retry(&self.retry_config, || {
+                self.executor
+                    .execute("gh", &["api", "graphql", "-f", &format!("query={}", query)])
+                    .context("Failed to execute gh command for commits")
+            })?;
 
             let commits = Self::parse_commits_response(&response, org_or_user)?;
             all_commits.extend(commits);
+
+            // Report progress
+            self.progress_reporter
+                .report_commits_progress(org_or_user, all_commits.len());
 
             // Check if there's a next page
             let graphql_response: CommitsGraphQLResponse =
@@ -441,6 +491,14 @@ impl<E: CommandExecutor> GitHubRepository for GhCommandRepository<E> {
             }
         }
 
+        self.progress_reporter
+            .finish_fetching_commits(org_or_user, all_commits.len());
+
+        // Save to cache
+        if let Some(ref cache) = self.cache {
+            cache.set(org_or_user, from, to, &all_commits)?;
+        }
+
         Ok(all_commits)
     }
 }
@@ -448,6 +506,8 @@ impl<E: CommandExecutor> GitHubRepository for GhCommandRepository<E> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::services::progress_reporter::NoOpProgressReporter;
+    use crate::infrastructure::cache::NoOpCache;
     use crate::infrastructure::github::command_executor::MockCommandExecutor;
     use chrono::NaiveDate;
 
@@ -496,7 +556,7 @@ mod tests {
             }
         }"#;
 
-        let activity = GhCommandRepository::<MockCommandExecutor>::parse_response(response)
+        let activity = GhCommandRepository::<MockCommandExecutor, NoOpProgressReporter, NoOpCache>::parse_response(response)
             .expect("Failed to parse");
 
         assert_eq!(activity.commits(), 150);
@@ -538,7 +598,7 @@ mod tests {
         let mock =
             MockCommandExecutor::new().with_response("gh api graphql -f query=", mock_response);
 
-        let repository = GhCommandRepository::new(mock);
+        let repository = GhCommandRepository::new(mock, NoOpProgressReporter::new(), NoOpCache);
         let from = NaiveDate::from_ymd_opt(2024, 1, 1).expect("Invalid date");
         let to = NaiveDate::from_ymd_opt(2024, 12, 31).expect("Invalid date");
 
@@ -602,7 +662,7 @@ mod tests {
             }
         }"#;
 
-        let commits = GhCommandRepository::<MockCommandExecutor>::parse_commits_response(response, "test-org")
+        let commits = GhCommandRepository::<MockCommandExecutor, NoOpProgressReporter, NoOpCache>::parse_commits_response(response, "test-org")
             .expect("Failed to parse commits");
 
         assert_eq!(commits.len(), 2);
@@ -661,7 +721,7 @@ mod tests {
         let mock = MockCommandExecutor::new()
             .with_response("gh api graphql -f query=", mock_response);
 
-        let repository = GhCommandRepository::new(mock);
+        let repository = GhCommandRepository::new(mock, NoOpProgressReporter::new(), NoOpCache);
         let from = NaiveDate::from_ymd_opt(2024, 1, 1).expect("Invalid date");
         let to = NaiveDate::from_ymd_opt(2024, 12, 31).expect("Invalid date");
 
@@ -760,7 +820,7 @@ mod tests {
             .with_response("gh api graphql -f query=", first_response)
             .with_response("gh api graphql -f query=", second_response);
 
-        let repository = GhCommandRepository::new(mock);
+        let repository = GhCommandRepository::new(mock, NoOpProgressReporter::new(), NoOpCache);
         let from = NaiveDate::from_ymd_opt(2024, 1, 1).expect("Invalid date");
         let to = NaiveDate::from_ymd_opt(2024, 12, 31).expect("Invalid date");
 

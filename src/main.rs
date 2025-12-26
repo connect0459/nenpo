@@ -5,7 +5,9 @@ mod presentation;
 
 use application::services::report_generator::ReportGenerator;
 use clap::Parser;
+use domain::services::progress_reporter::StdoutProgressReporter;
 use domain::value_objects::output_format::OutputFormat;
+use infrastructure::cache::FileCache;
 use infrastructure::config::toml_config_repository::TomlConfigRepository;
 use infrastructure::document::local_file_document_repository::LocalFileDocumentRepository;
 use infrastructure::github::{GhCommandExecutor, GhCommandRepository};
@@ -56,7 +58,15 @@ fn main() {
 
             // Create shared repository instances
             let config_repo = TomlConfigRepository::new();
-            let github_repo = GhCommandRepository::new(GhCommandExecutor::new());
+            let cache = FileCache::new().unwrap_or_else(|e| {
+                eprintln!("Warning: Failed to create cache: {}. Proceeding without cache.", e);
+                std::process::exit(1);
+            });
+            let github_repo = GhCommandRepository::new(
+                GhCommandExecutor::new(),
+                StdoutProgressReporter::new(),
+                cache,
+            );
             let document_repo = LocalFileDocumentRepository::new();
 
             // Generate reports based on format
