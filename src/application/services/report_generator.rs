@@ -109,9 +109,9 @@ where
             let mut all_commits = Vec::new();
             let author = config.target_github_user();
             for org in department.github_organizations() {
-                let commits = self
-                    .github_repository
-                    .fetch_commits(org, period_from, period_to, author)?;
+                let commits =
+                    self.github_repository
+                        .fetch_commits(org, period_from, period_to, author)?;
                 all_commits.extend(commits);
             }
 

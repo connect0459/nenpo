@@ -191,7 +191,8 @@ mod tests {
         assert!(content.contains("<h3>Organization Activity Summary</h3>"));
         assert!(content.contains("Total Commits: <span class=\"stat\">100</span>"));
         assert!(content.contains("<h3>Your Activity</h3>"));
-        assert!(content.contains("Your Commits: <span class=\"stat\">0</span>")); // No theme summary, so 0
+        assert!(content.contains("Your Commits: <span class=\"stat\">0</span>"));
+        // No theme summary, so 0
     }
 
     #[test]

@@ -448,7 +448,16 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
                 }}
             }}
             "#,
-            org_or_user, after_param, since, until, author_param, org_or_user, after_param, since, until, author_param
+            org_or_user,
+            after_param,
+            since,
+            until,
+            author_param,
+            org_or_user,
+            after_param,
+            since,
+            until,
+            author_param
         )
     }
 
@@ -564,8 +573,18 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
                 }}
             }}
             "#,
-            org_or_user, repo_name, since, until, author_param, after_param,
-            org_or_user, repo_name, since, until, author_param, after_param
+            org_or_user,
+            repo_name,
+            since,
+            until,
+            author_param,
+            after_param,
+            org_or_user,
+            repo_name,
+            since,
+            until,
+            author_param,
+            after_param
         )
     }
 
@@ -615,9 +634,8 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
     /// Returns repository names and pagination info
     #[allow(dead_code)]
     fn parse_repositories_response(response: &str) -> Result<(Vec<String>, PageInfo)> {
-        let graphql_response: RepositoriesGraphQLResponse =
-            serde_json::from_str(response)
-                .context("Failed to parse repositories GraphQL response")?;
+        let graphql_response: RepositoriesGraphQLResponse = serde_json::from_str(response)
+            .context("Failed to parse repositories GraphQL response")?;
 
         let data = graphql_response
             .data
@@ -648,9 +666,8 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
         org_or_user: &str,
         repo_name: &str,
     ) -> Result<(Vec<Commit>, PageInfo)> {
-        let graphql_response: SingleRepoCommitsGraphQLResponse =
-            serde_json::from_str(response)
-                .context("Failed to parse single repository commits GraphQL response")?;
+        let graphql_response: SingleRepoCommitsGraphQLResponse = serde_json::from_str(response)
+            .context("Failed to parse single repository commits GraphQL response")?;
 
         let data = graphql_response
             .data
@@ -677,10 +694,13 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
                 "⚠ Skipping {}/{}: No default branch (possibly empty repository)",
                 org_or_user, repo_name
             );
-            return Ok((Vec::new(), PageInfo {
-                has_next_page: false,
-                end_cursor: None,
-            }));
+            return Ok((
+                Vec::new(),
+                PageInfo {
+                    has_next_page: false,
+                    end_cursor: None,
+                },
+            ));
         };
 
         let history = branch_ref.target.history;
@@ -809,8 +829,7 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GitHubRepository
                     .context("Failed to execute gh command for repositories")
             })?;
 
-            let (repo_names, repos_page_info) =
-                Self::parse_repositories_response(&repos_response)?;
+            let (repo_names, repos_page_info) = Self::parse_repositories_response(&repos_response)?;
 
             // Inner loop: Fetch commits for each repository
             for repo_name in repo_names {
