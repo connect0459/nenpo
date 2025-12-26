@@ -30,6 +30,7 @@ impl Commit {
     }
 
     /// Returns the SHA
+    #[allow(dead_code)]
     pub fn sha(&self) -> &str {
         &self.sha
     }
@@ -40,16 +41,19 @@ impl Commit {
     }
 
     /// Returns the author name
+    #[allow(dead_code)]
     pub fn author(&self) -> &str {
         &self.author
     }
 
     /// Returns the committed date
+    #[allow(dead_code)]
     pub fn committed_date(&self) -> DateTime<Utc> {
         self.committed_date
     }
 
     /// Returns the repository name
+    #[allow(dead_code)]
     pub fn repository(&self) -> &str {
         &self.repository
     }

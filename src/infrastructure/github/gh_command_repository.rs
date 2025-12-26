@@ -121,6 +121,7 @@ struct CommitsTarget {
 #[derive(Debug, Deserialize)]
 struct CommitHistoryConnectionDetailed {
     #[serde(rename = "pageInfo")]
+    #[allow(dead_code)]
     page_info: PageInfo,
     nodes: Vec<CommitNode>,
 }

@@ -27,6 +27,7 @@ impl RetryConfig {
     }
 
     /// Creates a retry configuration with custom values
+    #[allow(dead_code)]
     pub fn new(max_retries: u32, initial_delay_ms: u64, backoff_multiplier: f64) -> Self {
         Self {
             max_retries,

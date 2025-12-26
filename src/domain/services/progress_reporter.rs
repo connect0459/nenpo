@@ -20,6 +20,7 @@ pub trait ProgressReporter {
     fn finish_fetching_commits(&self, org_or_user: &str, total_count: usize);
 
     /// Reports an error during operations
+    #[allow(dead_code)]
     fn report_error(&self, error: &str);
 }
 
@@ -57,8 +58,10 @@ impl ProgressReporter for StdoutProgressReporter {
 }
 
 /// No-op progress reporter for testing or when progress reporting is not needed
+#[allow(dead_code)]
 pub struct NoOpProgressReporter;
 
+#[allow(dead_code)]
 impl NoOpProgressReporter {
     pub fn new() -> Self {
         Self

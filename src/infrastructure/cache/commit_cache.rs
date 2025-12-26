@@ -25,6 +25,7 @@ pub trait CommitCache {
     ) -> Result<()>;
 
     /// Clears all cached data
+    #[allow(dead_code)]
     fn clear(&self) -> Result<()>;
 }
 
@@ -157,7 +158,7 @@ impl CommitCache for FileCache {
             for entry in fs::read_dir(&self.cache_dir)? {
                 let entry = entry?;
                 let path = entry.path();
-                if path.is_file() && path.extension().map_or(false, |ext| ext == "json") {
+                if path.is_file() && path.extension().is_some_and(|ext| ext == "json") {
                     fs::remove_file(path)?;
                 }
             }
