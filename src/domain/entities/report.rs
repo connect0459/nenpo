@@ -1,7 +1,9 @@
 use crate::domain::entities::document_content::DocumentContent;
 use crate::domain::entities::github_activity::GitHubActivity;
+use crate::domain::value_objects::commit_theme::CommitTheme;
 use chrono::NaiveDate;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 /// Represents an annual report
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -13,6 +15,7 @@ pub struct Report {
     period_to: NaiveDate,
     github_activity: GitHubActivity,
     documents: Vec<DocumentContent>,
+    theme_summary: HashMap<CommitTheme, u32>,
 }
 
 impl Report {
@@ -25,6 +28,7 @@ impl Report {
         period_to: NaiveDate,
         github_activity: GitHubActivity,
         documents: Vec<DocumentContent>,
+        theme_summary: HashMap<CommitTheme, u32>,
     ) -> Self {
         Self {
             year,
@@ -33,6 +37,7 @@ impl Report {
             period_to,
             github_activity,
             documents,
+            theme_summary,
         }
     }
 
@@ -71,6 +76,12 @@ impl Report {
     pub fn documents(&self) -> &[DocumentContent] {
         &self.documents
     }
+
+    /// Returns the theme summary
+    #[allow(dead_code)] // Temporarily allowed during TDD implementation
+    pub fn theme_summary(&self) -> &HashMap<CommitTheme, u32> {
+        &self.theme_summary
+    }
 }
 
 #[cfg(test)]
@@ -84,7 +95,15 @@ mod tests {
         let from = NaiveDate::from_ymd_opt(2024, 4, 1).expect("Invalid date");
         let to = NaiveDate::from_ymd_opt(2025, 3, 31).expect("Invalid date");
 
-        let report = Report::new(2024, "個人".to_string(), from, to, activity.clone(), vec![]);
+        let report = Report::new(
+            2024,
+            "個人".to_string(),
+            from,
+            to,
+            activity.clone(),
+            vec![],
+            HashMap::new(),
+        );
 
         assert_eq!(report.year(), 2024);
         assert_eq!(report.department_name(), "個人");
@@ -113,6 +132,7 @@ mod tests {
             to,
             activity,
             documents.clone(),
+            HashMap::new(),
         );
 
         assert_eq!(report.documents().len(), 2);

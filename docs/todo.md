@@ -47,4 +47,10 @@
   - [x] HtmlOutputRepository実装
   - [x] ReportGeneratorにファイル拡張子パラメータ追加
   - [x] main.rsでフォーマット選択機能
-- [ ] Conventional Commitsによるテーマ別要約
+- [x] Conventional Commitsによるテーマ別要約
+  - [x] CommitTheme値オブジェクト実装
+  - [x] Reportエンティティにtheme_summaryフィールド追加
+  - [x] Markdown出力にCommit Themesセクション追加
+  - [x] HTML出力にCommit Themesセクション追加
+  - [x] JSON出力にtheme_summaryが含まれることを確認（serdeで自動対応）
+  - [ ] 実際のコミットメッセージ取得（将来のタスク）

@@ -28,6 +28,7 @@ mod tests {
     use super::*;
     use crate::domain::entities::github_activity::GitHubActivity;
     use chrono::NaiveDate;
+    use std::collections::HashMap;
     use tempfile::TempDir;
 
     #[test]
@@ -39,7 +40,15 @@ mod tests {
         let activity = GitHubActivity::new(100, 20, 15, 30);
         let from = NaiveDate::from_ymd_opt(2024, 4, 1).expect("Invalid date");
         let to = NaiveDate::from_ymd_opt(2025, 3, 31).expect("Invalid date");
-        let report = Report::new(2024, "個人".to_string(), from, to, activity, vec![]);
+        let report = Report::new(
+            2024,
+            "個人".to_string(),
+            from,
+            to,
+            activity,
+            vec![],
+            HashMap::new(),
+        );
 
         let repository = JsonOutputRepository::new();
 
@@ -65,7 +74,15 @@ mod tests {
         let activity = GitHubActivity::new(100, 20, 15, 30);
         let from = NaiveDate::from_ymd_opt(2024, 4, 1).expect("Invalid date");
         let to = NaiveDate::from_ymd_opt(2025, 3, 31).expect("Invalid date");
-        let original_report = Report::new(2024, "個人".to_string(), from, to, activity, vec![]);
+        let original_report = Report::new(
+            2024,
+            "個人".to_string(),
+            from,
+            to,
+            activity,
+            vec![],
+            HashMap::new(),
+        );
 
         let repository = JsonOutputRepository::new();
 

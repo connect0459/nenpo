@@ -52,6 +52,17 @@ impl OutputRepository for MarkdownOutputRepository {
             }
         }
 
+        // Theme Summary (Conventional Commits)
+        if !report.theme_summary().is_empty() {
+            content.push_str("\n### Commit Themes\n");
+            let mut themes: Vec<_> = report.theme_summary().iter().collect();
+            themes.sort_by(|a, b| b.1.cmp(a.1)); // Sort by count descending
+
+            for (theme, count) in themes {
+                content.push_str(&format!("- {}: {}\n", theme.display_name(), count));
+            }
+        }
+
         std::fs::write(path, content)?;
         Ok(())
     }
@@ -63,6 +74,7 @@ mod tests {
     use crate::domain::entities::document_content::DocumentContent;
     use crate::domain::entities::github_activity::GitHubActivity;
     use chrono::NaiveDate;
+    use std::collections::HashMap;
     use tempfile::TempDir;
 
     #[test]
@@ -74,7 +86,15 @@ mod tests {
         let activity = GitHubActivity::new(100, 20, 15, 30);
         let from = NaiveDate::from_ymd_opt(2024, 4, 1).expect("Invalid date");
         let to = NaiveDate::from_ymd_opt(2025, 3, 31).expect("Invalid date");
-        let report = Report::new(2024, "個人".to_string(), from, to, activity, vec![]);
+        let report = Report::new(
+            2024,
+            "個人".to_string(),
+            from,
+            to,
+            activity,
+            vec![],
+            HashMap::new(),
+        );
 
         let repository = MarkdownOutputRepository::new();
 
@@ -103,7 +123,15 @@ mod tests {
             DocumentContent::new("doc2.md".to_string(), "Content 2".to_string()),
         ];
 
-        let report = Report::new(2024, "個人".to_string(), from, to, activity, documents);
+        let report = Report::new(
+            2024,
+            "個人".to_string(),
+            from,
+            to,
+            activity,
+            documents,
+            HashMap::new(),
+        );
 
         let repository = MarkdownOutputRepository::new();
 
@@ -127,7 +155,15 @@ mod tests {
         let activity = GitHubActivity::new(100, 20, 15, 30);
         let from = NaiveDate::from_ymd_opt(2024, 4, 1).expect("Invalid date");
         let to = NaiveDate::from_ymd_opt(2025, 3, 31).expect("Invalid date");
-        let report = Report::new(2024, "個人".to_string(), from, to, activity, vec![]);
+        let report = Report::new(
+            2024,
+            "個人".to_string(),
+            from,
+            to,
+            activity,
+            vec![],
+            HashMap::new(),
+        );
 
         let repository = MarkdownOutputRepository::new();
 

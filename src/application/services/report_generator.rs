@@ -103,6 +103,9 @@ where
                 .fetch_documents(department.local_documents())?;
 
             // Create report
+            // TODO: Phase 2: Fetch commit messages and build theme summary
+            let theme_summary = std::collections::HashMap::new();
+
             let report = Report::new(
                 fiscal_year,
                 department.name().to_string(),
@@ -110,6 +113,7 @@ where
                 period_to,
                 total_activity,
                 documents,
+                theme_summary,
             );
 
             // Output report
