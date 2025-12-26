@@ -671,10 +671,17 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
             repo_name, org_or_user
         ))?;
 
-        let branch_ref = repository.default_branch_ref.context(format!(
-            "No default branch found for {}/{}",
-            org_or_user, repo_name
-        ))?;
+        // If there's no default branch, return empty commits (e.g., empty repository)
+        let Some(branch_ref) = repository.default_branch_ref else {
+            eprintln!(
+                "⚠ Skipping {}/{}: No default branch (possibly empty repository)",
+                org_or_user, repo_name
+            );
+            return Ok((Vec::new(), PageInfo {
+                has_next_page: false,
+                end_cursor: None,
+            }));
+        };
 
         let history = branch_ref.target.history;
         let page_info = history.page_info.clone();
