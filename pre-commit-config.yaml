@@ -1,0 +1,40 @@
+# Pre-commit configuration for rustgression
+repos:
+  # General pre-commit hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      # Check for merge conflicts
+      - id: check-merge-conflict
+      # Check YAML syntax
+      - id: check-yaml
+      # Check TOML syntax
+      - id: check-toml
+      # Remove trailing whitespace
+      - id: trailing-whitespace
+      # Ensure files end with newline
+      - id: end-of-file-fixer
+      # Check for large files
+      - id: check-added-large-files
+        args: [--maxkb=500]
+
+  # Rust formatting and linting
+  - repo: local
+    hooks:
+      # Rust formatting with rustfmt
+      - id: rust-fmt
+        name: rust fmt
+        entry: cargo fmt
+        language: system
+        files: \.rs$
+        pass_filenames: false
+        args: [--all, --check]
+
+      # Rust linting with clippy
+      - id: rust-clippy
+        name: rust clippy
+        entry: cargo clippy
+        language: system
+        files: \.rs$
+        pass_filenames: false
+        args: [--all-targets, --all-features, --, -D, warnings]
