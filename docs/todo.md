@@ -36,6 +36,11 @@
   - [x] LocalFileDocumentRepository実装
   - [x] Reportエンティティへのドキュメント情報追加
   - [x] Markdown出力へのドキュメントセクション追加
-- [ ] 複数部門のサポート
+- [x] 複数部門のサポート
+  - [x] ReportGeneratorサービス実装
+  - [x] 複数部門ループ処理
+  - [x] 部門フィルタ機能
+  - [x] 年度期間計算
+  - [x] main.rsへの統合
 - [ ] JSON/HTML形式での出力
 - [ ] Conventional Commitsによるテーマ別要約

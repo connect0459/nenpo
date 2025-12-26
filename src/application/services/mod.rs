@@ -1,1 +1,1 @@
-// Application services will be defined here
+pub mod report_generator;
