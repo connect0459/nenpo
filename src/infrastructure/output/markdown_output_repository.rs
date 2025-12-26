@@ -40,9 +40,6 @@ impl OutputRepository for MarkdownOutputRepository {
 ### Your Activity
 
 - Your Commits: {}
-
-### Local Documents
-
 "#,
             report.year(),
             report.department_name(),
@@ -55,14 +52,6 @@ impl OutputRepository for MarkdownOutputRepository {
             your_commits_count,
         );
 
-        if report.documents().is_empty() {
-            content.push_str("(No documents)\n");
-        } else {
-            for doc in report.documents() {
-                content.push_str(&format!("- {}\n", doc.file_path()));
-            }
-        }
-
         // Theme Summary (Conventional Commits)
         if !report.theme_summary().is_empty() {
             content.push_str("\n#### Commit Themes\n\n");
@@ -71,6 +60,14 @@ impl OutputRepository for MarkdownOutputRepository {
 
             for (theme, count) in themes {
                 content.push_str(&format!("- {}: {}\n", theme.display_name(), count));
+            }
+        }
+
+        // Local Documents (only show if there are documents)
+        if !report.documents().is_empty() {
+            content.push_str("\n### Local Documents\n\n");
+            for doc in report.documents() {
+                content.push_str(&format!("- {}\n", doc.file_path()));
             }
         }
 
@@ -162,7 +159,7 @@ mod tests {
 
     #[test]
     #[allow(non_snake_case)]
-    fn ドキュメントがない場合は該当なしと表示する() {
+    fn ドキュメントがない場合はLocal_Documentsセクションを表示しない() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let output_path = temp_dir.path().join("test_report_no_docs.md");
 
@@ -186,7 +183,6 @@ mod tests {
             .expect("Failed to output report");
 
         let content = std::fs::read_to_string(&output_path).expect("Failed to read output file");
-        assert!(content.contains("### Local Documents"));
-        assert!(content.contains("(No documents)"));
+        assert!(!content.contains("### Local Documents")); // Should not contain Local Documents section
     }
 }

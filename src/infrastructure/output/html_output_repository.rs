@@ -95,8 +95,6 @@ impl OutputRepository for HtmlOutputRepository {
         <ul>
             <li>Your Commits: <span class="stat">{}</span></li>
         </ul>
-
-        <h3>Local Documents</h3>
 "#,
             report.year(),
             report.year(),
@@ -109,16 +107,6 @@ impl OutputRepository for HtmlOutputRepository {
             report.github_activity().reviews(),
             your_commits_count,
         );
-
-        if report.documents().is_empty() {
-            content.push_str("        <p>(No documents)</p>\n");
-        } else {
-            content.push_str("        <ul>\n");
-            for doc in report.documents() {
-                content.push_str(&format!("            <li>{}</li>\n", doc.file_path()));
-            }
-            content.push_str("        </ul>\n");
-        }
 
         // Theme Summary (Conventional Commits)
         if !report.theme_summary().is_empty() {
@@ -133,6 +121,16 @@ impl OutputRepository for HtmlOutputRepository {
                     theme.display_name(),
                     count
                 ));
+            }
+            content.push_str("        </ul>\n");
+        }
+
+        // Local Documents (only show if there are documents)
+        if !report.documents().is_empty() {
+            content.push_str("\n        <h3>Local Documents</h3>\n");
+            content.push_str("        <ul>\n");
+            for doc in report.documents() {
+                content.push_str(&format!("            <li>{}</li>\n", doc.file_path()));
             }
             content.push_str("        </ul>\n");
         }
@@ -236,7 +234,7 @@ mod tests {
 
     #[test]
     #[allow(non_snake_case)]
-    fn ドキュメントがない場合は該当なしと表示する() {
+    fn ドキュメントがない場合はLocal_Documentsセクションを表示しない() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let output_path = temp_dir.path().join("test_report_no_docs.html");
 
@@ -261,7 +259,6 @@ mod tests {
 
         let content = std::fs::read_to_string(&output_path).expect("Failed to read output file");
 
-        assert!(content.contains("<h3>Local Documents</h3>"));
-        assert!(content.contains("<p>(No documents)</p>"));
+        assert!(!content.contains("<h3>Local Documents</h3>")); // Should not contain Local Documents section
     }
 }
