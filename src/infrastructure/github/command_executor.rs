@@ -23,12 +23,15 @@ impl CommandExecutor for GhCommandExecutor {
     fn execute(&self, program: &str, args: &[&str]) -> Result<String> {
         let output = Command::new(program).args(args).output()?;
 
-        if !output.status.success() {
+        // For GraphQL queries, stdout may contain valid JSON even if the command fails
+        // (e.g., when querying a non-existent organization but user data is available)
+        let stdout = String::from_utf8(output.stdout)?;
+        if !output.status.success() && stdout.is_empty() {
             let stderr = String::from_utf8_lossy(&output.stderr);
             anyhow::bail!("Command failed: {}", stderr);
         }
 
-        Ok(String::from_utf8(output.stdout)?)
+        Ok(stdout)
     }
 }
 
