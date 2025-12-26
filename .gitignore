@@ -3,5 +3,11 @@
 # coverage
 /coverage
 
-# local docs
+# input files
 /local-docs
+
+# output files
+/reports
+
+# config files
+nenpo-config.toml

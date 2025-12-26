@@ -1,0 +1,20 @@
+# Nenpo Configuration Example
+# Copy this file to 'nenpo-config.toml' and customize it for your needs
+
+# Default fiscal year start month (1-12)
+default_fiscal_year_start_month = 1
+
+# Default output format: "markdown", "json", or "html"
+default_output_format = "markdown"
+
+# Output directory for generated reports
+output_directory = "./reports"
+
+# Department configurations
+[[departments]]
+name = "Personal Projects"
+fiscal_year_start_month = 1
+# GitHub organizations or users to track
+github_organizations = ["connect0459"]
+# Local document patterns (glob patterns)
+local_documents = []
