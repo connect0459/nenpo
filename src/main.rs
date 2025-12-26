@@ -114,7 +114,10 @@ fn main() {
 
             match result {
                 Ok(files) => {
-                    println!("✅ Successfully generated {} report(s):", files.len());
+                    println!(
+                        "[SUCCESS] Successfully generated {} report(s):",
+                        files.len()
+                    );
                     for file in files {
                         println!("   - {}/{}", output_dir.display(), file);
                     }

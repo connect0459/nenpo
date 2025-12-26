@@ -691,7 +691,7 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
         // If there's no default branch, return empty commits (e.g., empty repository)
         let Some(branch_ref) = repository.default_branch_ref else {
             eprintln!(
-                "⚠ Skipping {}/{}: No default branch (possibly empty repository)",
+                "[WARNING] Skipping {}/{}: No default branch (possibly empty repository)",
                 org_or_user, repo_name
             );
             return Ok((
@@ -802,7 +802,7 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GitHubRepository
         if let Some(ref cache) = self.cache {
             if let Some(cached_commits) = cache.get(org_or_user, from, to, author)? {
                 eprintln!(
-                    "✓ Using cached commits for {} ({} commits)",
+                    "[INFO] Using cached commits for {} ({} commits)",
                     org_or_user,
                     cached_commits.len()
                 );
