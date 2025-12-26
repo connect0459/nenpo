@@ -17,6 +17,9 @@ impl HtmlOutputRepository {
 
 impl OutputRepository for HtmlOutputRepository {
     fn output(&self, report: &Report, path: &Path) -> Result<()> {
+        // Calculate total commits from theme summary
+        let your_commits_count: usize = report.theme_summary().values().map(|&v| v as usize).sum();
+
         let mut content = format!(
             r#"<!DOCTYPE html>
 <html lang="ja">
@@ -51,6 +54,10 @@ impl OutputRepository for HtmlOutputRepository {
             color: #666;
             margin-top: 20px;
         }}
+        h4 {{
+            color: #777;
+            margin-top: 15px;
+        }}
         ul {{
             list-style-type: none;
             padding-left: 0;
@@ -76,12 +83,17 @@ impl OutputRepository for HtmlOutputRepository {
             <li>To: {}</li>
         </ul>
 
-        <h3>GitHub Activity</h3>
+        <h3>Organization Activity Summary</h3>
         <ul>
-            <li>Commits: <span class="stat">{}</span></li>
-            <li>Pull Requests: <span class="stat">{}</span></li>
-            <li>Issues: <span class="stat">{}</span></li>
-            <li>Reviews: <span class="stat">{}</span></li>
+            <li>Total Commits: <span class="stat">{}</span></li>
+            <li>Total Pull Requests: <span class="stat">{}</span></li>
+            <li>Total Issues: <span class="stat">{}</span></li>
+            <li>Total Reviews: <span class="stat">{}</span></li>
+        </ul>
+
+        <h3>Your Activity</h3>
+        <ul>
+            <li>Your Commits: <span class="stat">{}</span></li>
         </ul>
 
         <h3>Local Documents</h3>
@@ -95,6 +107,7 @@ impl OutputRepository for HtmlOutputRepository {
             report.github_activity().pull_requests(),
             report.github_activity().issues(),
             report.github_activity().reviews(),
+            your_commits_count,
         );
 
         if report.documents().is_empty() {
@@ -109,7 +122,7 @@ impl OutputRepository for HtmlOutputRepository {
 
         // Theme Summary (Conventional Commits)
         if !report.theme_summary().is_empty() {
-            content.push_str("\n        <h3>Commit Themes</h3>\n");
+            content.push_str("\n        <h4>Commit Themes</h4>\n");
             content.push_str("        <ul>\n");
             let mut themes: Vec<_> = report.theme_summary().iter().collect();
             themes.sort_by(|a, b| b.1.cmp(a.1)); // Sort by count descending
@@ -177,7 +190,10 @@ mod tests {
         assert!(content.contains("<title>Annual Report 2024</title>"));
         assert!(content.contains("<h1>Annual Report 2024</h1>"));
         assert!(content.contains("<h2>個人</h2>"));
-        assert!(content.contains("Commits: <span class=\"stat\">100</span>"));
+        assert!(content.contains("<h3>Organization Activity Summary</h3>"));
+        assert!(content.contains("Total Commits: <span class=\"stat\">100</span>"));
+        assert!(content.contains("<h3>Your Activity</h3>"));
+        assert!(content.contains("Your Commits: <span class=\"stat\">0</span>")); // No theme summary, so 0
     }
 
     #[test]

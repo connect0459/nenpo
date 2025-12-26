@@ -17,22 +17,32 @@ impl MarkdownOutputRepository {
 
 impl OutputRepository for MarkdownOutputRepository {
     fn output(&self, report: &Report, path: &Path) -> Result<()> {
+        // Calculate total commits from theme summary
+        let your_commits_count: usize = report.theme_summary().values().map(|&v| v as usize).sum();
+
         let mut content = format!(
             r#"# Annual Report {}
 
 ## {}
 
 ### Period
+
 - From: {}
 - To: {}
 
-### GitHub Activity
-- Commits: {}
-- Pull Requests: {}
-- Issues: {}
-- Reviews: {}
+### Organization Activity Summary
+
+- Total Commits: {}
+- Total Pull Requests: {}
+- Total Issues: {}
+- Total Reviews: {}
+
+### Your Activity
+
+- Your Commits: {}
 
 ### Local Documents
+
 "#,
             report.year(),
             report.department_name(),
@@ -42,6 +52,7 @@ impl OutputRepository for MarkdownOutputRepository {
             report.github_activity().pull_requests(),
             report.github_activity().issues(),
             report.github_activity().reviews(),
+            your_commits_count,
         );
 
         if report.documents().is_empty() {
@@ -54,7 +65,7 @@ impl OutputRepository for MarkdownOutputRepository {
 
         // Theme Summary (Conventional Commits)
         if !report.theme_summary().is_empty() {
-            content.push_str("\n### Commit Themes\n");
+            content.push_str("\n#### Commit Themes\n\n");
             let mut themes: Vec<_> = report.theme_summary().iter().collect();
             themes.sort_by(|a, b| b.1.cmp(a.1)); // Sort by count descending
 
@@ -105,7 +116,10 @@ mod tests {
         let content = std::fs::read_to_string(&output_path).expect("Failed to read output file");
         assert!(content.contains("# Annual Report 2024"));
         assert!(content.contains("## 個人"));
-        assert!(content.contains("Commits: 100"));
+        assert!(content.contains("### Organization Activity Summary"));
+        assert!(content.contains("Total Commits: 100"));
+        assert!(content.contains("### Your Activity"));
+        assert!(content.contains("Your Commits: 0")); // No theme summary, so 0
     }
 
     #[test]
