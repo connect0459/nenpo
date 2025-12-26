@@ -1,1 +1,1 @@
-// Output generation will be implemented here
+pub mod markdown_output_repository;

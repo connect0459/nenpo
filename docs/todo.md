@@ -1,6 +1,6 @@
 # todo
 
-## Phase 1: MVP
+## Phase 1: MVP ✅ 完了
 
 - [x] プロジェクトの初期化
 - [x] Cargo.tomlの修正（edition、依存クレート追加）
@@ -16,5 +16,18 @@
   - [x] GitHubActivityエンティティ
   - [x] GitHubRepositoryトレイト
   - [x] GhCommandRepository実装（Phase 1: ダミーデータ）
-- [ ] Markdown出力機能の実装（TDD）
-- [ ] CLIコマンドの実装
+- [x] Markdown出力機能の実装（TDD）
+  - [x] Reportエンティティ
+  - [x] OutputRepositoryトレイト
+  - [x] MarkdownOutputRepository実装
+- [x] CLIコマンドの実装
+  - [x] CLI構造定義（clap）
+  - [x] generateコマンド実装
+
+## Phase 2: 拡張（次のステップ）
+
+- [ ] 実際のGitHubデータ取得（gh コマンド実行）
+- [ ] ローカルドキュメント読み込み
+- [ ] 複数部門のサポート
+- [ ] JSON/HTML形式での出力
+- [ ] Conventional Commitsによるテーマ別要約
