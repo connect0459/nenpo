@@ -6,7 +6,12 @@
 - [x] Cargo.tomlの修正（edition、依存クレート追加）
 - [x] アーキテクチャ設計のドキュメント化
 - [x] オニオンアーキテクチャのディレクトリ構造作成
-- [ ] 設定ファイル読み込み機能の実装（TDD）
+- [x] 設定ファイル読み込み機能の実装（TDD）
+  - [x] Departmentエンティティ
+  - [x] OutputFormat値オブジェクト
+  - [x] Configエンティティ
+  - [x] ConfigRepositoryトレイト
+  - [x] TomlConfigRepository実装
 - [ ] GitHubデータ取得機能の実装（TDD）
 - [ ] Markdown出力機能の実装（TDD）
 - [ ] CLIコマンドの実装

@@ -1,1 +1,1 @@
-// Repository trait definitions will be defined here
+pub mod config_repository;
