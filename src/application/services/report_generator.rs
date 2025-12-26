@@ -107,10 +107,11 @@ where
 
             // Fetch commits and build theme summary
             let mut all_commits = Vec::new();
+            let author = config.target_github_user();
             for org in department.github_organizations() {
                 let commits = self
                     .github_repository
-                    .fetch_commits(org, period_from, period_to)?;
+                    .fetch_commits(org, period_from, period_to, author)?;
                 all_commits.extend(commits);
             }
 
@@ -222,6 +223,7 @@ mod tests {
             _org_or_user: &str,
             _from: NaiveDate,
             _to: NaiveDate,
+            _author: Option<&str>,
         ) -> Result<Vec<Commit>> {
             // Mock implementation returns empty commits for now
             Ok(Vec::new())

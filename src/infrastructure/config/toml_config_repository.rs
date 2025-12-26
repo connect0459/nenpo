@@ -10,6 +10,8 @@ use std::path::Path;
 #[derive(Debug, Deserialize)]
 #[allow(dead_code)] // Used for TOML deserialization
 struct TomlConfig {
+    #[serde(default)]
+    target_github_user: Option<String>,
     default_fiscal_year_start_month: u32,
     default_output_format: String,
     output_directory: String,
@@ -66,7 +68,8 @@ impl ConfigRepository for TomlConfigRepository {
             })
             .collect();
 
-        Ok(Config::new(
+        Ok(Config::with_target_user(
+            toml_config.target_github_user,
             toml_config.default_fiscal_year_start_month,
             output_format,
             toml_config.output_directory,
@@ -115,9 +118,43 @@ local_documents = ["docs/**/*.md"]
         assert_eq!(config.default_fiscal_year_start_month(), 4);
         assert_eq!(config.default_output_format(), OutputFormat::Markdown);
         assert_eq!(config.output_directory(), "./reports");
+        assert_eq!(config.target_github_user(), None);
         assert_eq!(config.departments().len(), 2);
         assert_eq!(config.departments()[0].name(), "個人");
         assert_eq!(config.departments()[1].name(), "企業");
+
+        fs::remove_file(temp_file).expect("Failed to remove temp file");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn target_github_userを含む設定を読み込める() {
+        let toml_content = r#"
+target_github_user = "connect0459"
+default_fiscal_year_start_month = 1
+default_output_format = "markdown"
+output_directory = "./reports"
+
+[[departments]]
+name = "個人"
+fiscal_year_start_month = 1
+github_organizations = ["connect0459"]
+local_documents = []
+"#;
+
+        let temp_file = "/tmp/test_config_with_user.toml";
+        let mut file = fs::File::create(temp_file).expect("Failed to create temp file");
+        file.write_all(toml_content.as_bytes())
+            .expect("Failed to write temp file");
+
+        let repository = TomlConfigRepository::new();
+        let config = repository
+            .load(Path::new(temp_file))
+            .expect("Failed to load config");
+
+        assert_eq!(config.target_github_user(), Some("connect0459"));
+        assert_eq!(config.default_fiscal_year_start_month(), 1);
+        assert_eq!(config.departments().len(), 1);
 
         fs::remove_file(temp_file).expect("Failed to remove temp file");
     }

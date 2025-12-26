@@ -6,6 +6,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[allow(dead_code)] // Temporarily allowed during TDD implementation
 pub struct Config {
+    #[serde(default)]
+    target_github_user: Option<String>,
     default_fiscal_year_start_month: u32,
     default_output_format: OutputFormat,
     output_directory: String,
@@ -22,11 +24,36 @@ impl Config {
         departments: Vec<Department>,
     ) -> Self {
         Self {
+            target_github_user: None,
             default_fiscal_year_start_month,
             default_output_format,
             output_directory,
             departments,
         }
+    }
+
+    /// Creates a new Config instance with target GitHub user
+    #[allow(dead_code)] // Temporarily allowed during TDD implementation
+    pub fn with_target_user(
+        target_github_user: Option<String>,
+        default_fiscal_year_start_month: u32,
+        default_output_format: OutputFormat,
+        output_directory: String,
+        departments: Vec<Department>,
+    ) -> Self {
+        Self {
+            target_github_user,
+            default_fiscal_year_start_month,
+            default_output_format,
+            output_directory,
+            departments,
+        }
+    }
+
+    /// Returns the target GitHub user
+    #[allow(dead_code)] // Temporarily allowed during TDD implementation
+    pub fn target_github_user(&self) -> Option<&str> {
+        self.target_github_user.as_deref()
     }
 
     /// Returns the default fiscal year start month
@@ -88,5 +115,34 @@ mod tests {
 
         assert_eq!(config.departments().len(), 1);
         assert_eq!(config.departments()[0].name(), "個人");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn target_github_userを含む設定を作成できる() {
+        let config = Config::with_target_user(
+            Some("connect0459".to_string()),
+            4,
+            OutputFormat::Markdown,
+            "./reports".to_string(),
+            vec![],
+        );
+
+        assert_eq!(config.target_github_user(), Some("connect0459"));
+        assert_eq!(config.default_fiscal_year_start_month(), 4);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn target_github_userがNoneの場合() {
+        let config = Config::with_target_user(
+            None,
+            4,
+            OutputFormat::Markdown,
+            "./reports".to_string(),
+            vec![],
+        );
+
+        assert_eq!(config.target_github_user(), None);
     }
 }

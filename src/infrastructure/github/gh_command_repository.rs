@@ -135,6 +135,21 @@ struct PageInfo {
 }
 
 #[derive(Debug, Deserialize)]
+struct UserIdGraphQLResponse {
+    data: Option<UserIdGraphQLData>,
+}
+
+#[derive(Debug, Deserialize)]
+struct UserIdGraphQLData {
+    user: Option<UserIdUser>,
+}
+
+#[derive(Debug, Deserialize)]
+struct UserIdUser {
+    id: String,
+}
+
+#[derive(Debug, Deserialize)]
 struct CommitNode {
     oid: String,
     message: String,
@@ -255,6 +270,37 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
         )
     }
 
+    /// Fetches GitHub user ID from login name
+    fn fetch_user_id(&self, login: &str) -> Result<String> {
+        let query = format!(
+            r#"
+            query {{
+                user(login: "{}") {{
+                    id
+                }}
+            }}
+            "#,
+            login
+        );
+
+        let response = with_retry(&self.retry_config, || {
+            self.executor
+                .execute("gh", &["api", "graphql", "-f", &format!("query={}", query)])
+                .context("Failed to execute gh command for user ID")
+        })?;
+
+        let graphql_response: UserIdGraphQLResponse =
+            serde_json::from_str(&response).context("Failed to parse user ID GraphQL response")?;
+
+        let data = graphql_response
+            .data
+            .context("No data in user ID response")?;
+
+        let user = data.user.context("User not found")?;
+
+        Ok(user.id)
+    }
+
     /// Builds a GraphQL query for fetching commits with pagination
     #[allow(dead_code)]
     fn build_commits_query(
@@ -262,11 +308,15 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
         from: NaiveDate,
         to: NaiveDate,
         after_cursor: Option<&str>,
+        author_id: Option<&str>,
     ) -> String {
         let since = format!("{}T00:00:00Z", from);
         let until = format!("{}T23:59:59Z", to);
         let after_param = after_cursor
             .map(|c| format!(", after: \"{}\"", c))
+            .unwrap_or_default();
+        let author_param = author_id
+            .map(|id| format!(", author: {{id: \"{}\"}}", id))
             .unwrap_or_default();
 
         format!(
@@ -283,7 +333,7 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
                             defaultBranchRef {{
                                 target {{
                                     ... on Commit {{
-                                        history(first: 100, since: "{}", until: "{}") {{
+                                        history(first: 100, since: "{}", until: "{}"{}) {{
                                             pageInfo {{
                                                 hasNextPage
                                                 endCursor
@@ -314,7 +364,7 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
                             defaultBranchRef {{
                                 target {{
                                     ... on Commit {{
-                                        history(first: 100, since: "{}", until: "{}") {{
+                                        history(first: 100, since: "{}", until: "{}"{}) {{
                                             pageInfo {{
                                                 hasNextPage
                                                 endCursor
@@ -336,7 +386,7 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
                 }}
             }}
             "#,
-            org_or_user, after_param, since, until, org_or_user, after_param, since, until
+            org_or_user, after_param, since, until, author_param, org_or_user, after_param, since, until, author_param
         )
     }
 
@@ -445,10 +495,18 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GitHubRepository
         org_or_user: &str,
         from: NaiveDate,
         to: NaiveDate,
+        author: Option<&str>,
     ) -> Result<Vec<Commit>> {
+        // Fetch author ID if author is specified
+        let author_id = if let Some(author_login) = author {
+            Some(self.fetch_user_id(author_login)?)
+        } else {
+            None
+        };
+
         // Check cache first
         if let Some(ref cache) = self.cache {
-            if let Some(cached_commits) = cache.get(org_or_user, from, to)? {
+            if let Some(cached_commits) = cache.get(org_or_user, from, to, author)? {
                 eprintln!(
                     "✓ Using cached commits for {} ({} commits)",
                     org_or_user,
@@ -465,7 +523,7 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GitHubRepository
 
         // Pagination loop: fetch all commits by following hasNextPage
         loop {
-            let query = Self::build_commits_query(org_or_user, from, to, after_cursor.as_deref());
+            let query = Self::build_commits_query(org_or_user, from, to, after_cursor.as_deref(), author_id.as_deref());
 
             // Execute with retry
             let response = with_retry(&self.retry_config, || {
@@ -509,7 +567,7 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GitHubRepository
 
         // Save to cache
         if let Some(ref cache) = self.cache {
-            cache.set(org_or_user, from, to, &all_commits)?;
+            cache.set(org_or_user, from, to, author, &all_commits)?;
         }
 
         Ok(all_commits)
@@ -739,7 +797,7 @@ mod tests {
         let to = NaiveDate::from_ymd_opt(2024, 12, 31).expect("Invalid date");
 
         let commits = repository
-            .fetch_commits("test-org", from, to)
+            .fetch_commits("test-org", from, to, None)
             .expect("Failed to fetch commits");
 
         assert_eq!(commits.len(), 1);
@@ -838,7 +896,7 @@ mod tests {
         let to = NaiveDate::from_ymd_opt(2024, 12, 31).expect("Invalid date");
 
         let commits = repository
-            .fetch_commits("test-org", from, to)
+            .fetch_commits("test-org", from, to, None)
             .expect("Failed to fetch commits with pagination");
 
         assert_eq!(commits.len(), 2);

@@ -27,6 +27,7 @@ pub trait GitHubRepository {
     /// * `org_or_user` - GitHub organization or user name
     /// * `from` - Start date (inclusive)
     /// * `to` - End date (inclusive)
+    /// * `author` - Optional GitHub user login to filter commits by author
     ///
     /// # Returns
     ///
@@ -36,5 +37,6 @@ pub trait GitHubRepository {
         org_or_user: &str,
         from: NaiveDate,
         to: NaiveDate,
+        author: Option<&str>,
     ) -> Result<Vec<Commit>>;
 }
