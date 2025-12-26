@@ -53,19 +53,19 @@
   - [x] Markdown出力にCommit Themesセクション追加
   - [x] HTML出力にCommit Themesセクション追加
   - [x] JSON出力にtheme_summaryが含まれることを確認（serdeで自動対応）
-  - [ ] 実際のコミットメッセージ取得
-    - **Phase 1: 制限付き実装**（推奨・見積もり2-3時間）
-      - [ ] GitHubRepositoryトレイトに`fetch_commit_messages()`メソッド追加
-      - [ ] GraphQLクエリ拡張（各リポジトリ最新100コミットまで）
-      - [ ] GhCommandRepositoryでコミットメッセージ取得実装
-      - [ ] CommitTheme::from_commit_message()でパース処理実装
-      - [ ] ReportGeneratorでtheme_summary構築処理追加
-      - [ ] テスト作成（MockCommandExecutorでコミットメッセージ取得テスト）
-      - [ ] ボトルネック：API制限（認証済み5,000req/h）、100コミット/リポジトリの制限
-    - **Phase 2: 完全実装**（将来的・見積もり+4-6時間）
-      - [ ] ページネーション処理実装（pageInfo.endCursor使用）
-      - [ ] 進捗表示機能追加
-      - [ ] エラーハンドリング強化（API制限エラー、リトライ処理）
-      - [ ] キャッシュ機能（同じ期間の再取得を避ける）
-      - [ ] パフォーマンス最適化（並列処理、ストリーム処理）
-      - [ ] ボトルネック：大規模プロジェクト（数万コミット）のメモリ消費
+  - [x] 実際のコミットメッセージ取得（Phase 2 完全実装: 基本機能）
+    - [x] Commitエンティティ実装（SHA、メッセージ、作成者、日時、リポジトリ名）
+    - [x] GitHubRepositoryトレイトに`fetch_commits()`メソッド追加
+    - [x] GraphQLクエリ拡張（ページネーション対応）
+    - [x] GhCommandRepositoryでコミット取得実装（再帰的ページネーション）
+    - [x] MockCommandExecutor改良（複数レスポンス対応）
+    - [x] ReportGeneratorでtheme_summary構築処理追加
+    - [x] テスト作成（コミット取得、ページネーション、テーマ別要約）
+  - [ ] Phase 2 完全実装: 最適化機能（残タスク）
+    - [ ] 進捗表示機能（ProgressReporterトレイト）
+    - [ ] エラーハンドリング強化（API制限エラー、リトライ処理）
+    - [ ] キャッシュ機能（~/.cache/nenpo/にJSON保存）
+    - [ ] 並列処理最適化（tokio非同期処理）
+    - [ ] 統合テスト実施（80%カバレッジ確認）
+    - [ ] 実際のGitHubデータで動作確認
+    - [ ] 注意事項: API制限（認証済み5,000req/h）、大規模プロジェクトのメモリ消費

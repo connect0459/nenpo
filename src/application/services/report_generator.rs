@@ -1,11 +1,14 @@
+use crate::domain::entities::commit::Commit;
 use crate::domain::entities::github_activity::GitHubActivity;
 use crate::domain::entities::report::Report;
 use crate::domain::repositories::config_repository::ConfigRepository;
 use crate::domain::repositories::document_repository::DocumentRepository;
 use crate::domain::repositories::github_repository::GitHubRepository;
 use crate::domain::repositories::output_repository::OutputRepository;
+use crate::domain::value_objects::commit_theme::CommitTheme;
 use anyhow::{Context, Result};
 use chrono::NaiveDate;
+use std::collections::HashMap;
 use std::path::Path;
 
 /// Service for generating reports
@@ -102,9 +105,16 @@ where
                 .document_repository
                 .fetch_documents(department.local_documents())?;
 
-            // Create report
-            // TODO: Phase 2: Fetch commit messages and build theme summary
-            let theme_summary = std::collections::HashMap::new();
+            // Fetch commits and build theme summary
+            let mut all_commits = Vec::new();
+            for org in department.github_organizations() {
+                let commits = self
+                    .github_repository
+                    .fetch_commits(org, period_from, period_to)?;
+                all_commits.extend(commits);
+            }
+
+            let theme_summary = Self::build_theme_summary(&all_commits);
 
             let report = Report::new(
                 fiscal_year,
@@ -130,6 +140,18 @@ where
         }
 
         Ok(generated_files)
+    }
+
+    /// Builds a theme summary from commit messages
+    fn build_theme_summary(commits: &[Commit]) -> HashMap<CommitTheme, u32> {
+        let mut theme_summary = HashMap::new();
+
+        for commit in commits {
+            let theme = CommitTheme::from_commit_message(commit.message());
+            *theme_summary.entry(theme).or_insert(0) += 1;
+        }
+
+        theme_summary
     }
 }
 
@@ -193,6 +215,16 @@ mod tests {
                 .get(org_or_user)
                 .cloned()
                 .ok_or_else(|| anyhow::anyhow!("No mock data for {}", org_or_user))
+        }
+
+        fn fetch_commits(
+            &self,
+            _org_or_user: &str,
+            _from: NaiveDate,
+            _to: NaiveDate,
+        ) -> Result<Vec<Commit>> {
+            // Mock implementation returns empty commits for now
+            Ok(Vec::new())
         }
     }
 
@@ -404,5 +436,55 @@ mod tests {
         let (from, to) = calculate_fiscal_period(2024, 1);
         assert_eq!(from, NaiveDate::from_ymd_opt(2024, 1, 1).unwrap());
         assert_eq!(to, NaiveDate::from_ymd_opt(2024, 12, 31).unwrap());
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn コミットメッセージからテーマ別要約を構築できる() {
+        use chrono::{TimeZone, Utc};
+
+        let commits = vec![
+            Commit::new(
+                "abc123".to_string(),
+                "feat: add new feature".to_string(),
+                "John Doe".to_string(),
+                Utc.with_ymd_and_hms(2024, 1, 15, 10, 30, 0).unwrap(),
+                "test-org/repo1".to_string(),
+            ),
+            Commit::new(
+                "def456".to_string(),
+                "fix: resolve bug".to_string(),
+                "Jane Smith".to_string(),
+                Utc.with_ymd_and_hms(2024, 1, 16, 14, 20, 0).unwrap(),
+                "test-org/repo1".to_string(),
+            ),
+            Commit::new(
+                "ghi789".to_string(),
+                "feat: add another feature".to_string(),
+                "Bob Johnson".to_string(),
+                Utc.with_ymd_and_hms(2024, 1, 17, 9, 15, 0).unwrap(),
+                "test-org/repo2".to_string(),
+            ),
+            Commit::new(
+                "jkl012".to_string(),
+                "docs: update README".to_string(),
+                "Alice Williams".to_string(),
+                Utc.with_ymd_and_hms(2024, 1, 18, 11, 45, 0).unwrap(),
+                "test-org/repo2".to_string(),
+            ),
+        ];
+
+        let theme_summary =
+            ReportGenerator::<
+                MockConfigRepository,
+                MockGitHubRepository,
+                MockDocumentRepository,
+                MockOutputRepository,
+            >::build_theme_summary(&commits);
+
+        assert_eq!(theme_summary.get(&CommitTheme::Feat), Some(&2));
+        assert_eq!(theme_summary.get(&CommitTheme::Fix), Some(&1));
+        assert_eq!(theme_summary.get(&CommitTheme::Docs), Some(&1));
+        assert_eq!(theme_summary.get(&CommitTheme::Refactor), None);
     }
 }

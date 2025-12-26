@@ -1,8 +1,9 @@
+use crate::domain::entities::commit::Commit;
 use crate::domain::entities::github_activity::GitHubActivity;
 use crate::domain::repositories::github_repository::GitHubRepository;
 use crate::infrastructure::github::CommandExecutor;
 use anyhow::{Context, Result};
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate, Utc};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -66,6 +67,81 @@ struct PullRequestConnection {
 struct IssueConnection {
     #[serde(rename = "totalCount")]
     total_count: u32,
+}
+
+// Structures for commit fetching
+#[derive(Debug, Deserialize)]
+struct CommitsGraphQLResponse {
+    data: Option<CommitsGraphQLData>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CommitsGraphQLData {
+    organization: Option<CommitsOrganization>,
+    user: Option<CommitsUser>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CommitsOrganization {
+    repositories: CommitsRepositoryConnection,
+}
+
+#[derive(Debug, Deserialize)]
+struct CommitsUser {
+    repositories: CommitsRepositoryConnection,
+}
+
+#[derive(Debug, Deserialize)]
+struct CommitsRepositoryConnection {
+    nodes: Vec<CommitsRepository>,
+    #[serde(rename = "pageInfo")]
+    page_info: PageInfo,
+}
+
+#[derive(Debug, Deserialize)]
+struct CommitsRepository {
+    name: String,
+    #[serde(rename = "defaultBranchRef")]
+    default_branch_ref: Option<CommitsBranchRef>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CommitsBranchRef {
+    target: CommitsTarget,
+}
+
+#[derive(Debug, Deserialize)]
+struct CommitsTarget {
+    history: CommitHistoryConnectionDetailed,
+}
+
+#[derive(Debug, Deserialize)]
+struct CommitHistoryConnectionDetailed {
+    #[serde(rename = "pageInfo")]
+    page_info: PageInfo,
+    nodes: Vec<CommitNode>,
+}
+
+#[derive(Debug, Deserialize)]
+struct PageInfo {
+    #[serde(rename = "hasNextPage")]
+    has_next_page: bool,
+    #[serde(rename = "endCursor")]
+    end_cursor: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CommitNode {
+    oid: String,
+    message: String,
+    author: CommitAuthor,
+    #[serde(rename = "committedDate")]
+    committed_date: DateTime<Utc>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CommitAuthor {
+    name: Option<String>,
 }
 
 /// GitHub repository implementation using gh command
@@ -137,6 +213,130 @@ impl<E: CommandExecutor> GhCommandRepository<E> {
         )
     }
 
+    /// Builds a GraphQL query for fetching commits with pagination
+    #[allow(dead_code)]
+    fn build_commits_query(
+        org_or_user: &str,
+        from: NaiveDate,
+        to: NaiveDate,
+        after_cursor: Option<&str>,
+    ) -> String {
+        let since = format!("{}T00:00:00Z", from);
+        let until = format!("{}T23:59:59Z", to);
+        let after_param = after_cursor
+            .map(|c| format!(", after: \"{}\"", c))
+            .unwrap_or_default();
+
+        format!(
+            r#"
+            query {{
+                organization(login: "{}") {{
+                    repositories(first: 100{}) {{
+                        pageInfo {{
+                            hasNextPage
+                            endCursor
+                        }}
+                        nodes {{
+                            name
+                            defaultBranchRef {{
+                                target {{
+                                    ... on Commit {{
+                                        history(first: 100, since: "{}", until: "{}") {{
+                                            pageInfo {{
+                                                hasNextPage
+                                                endCursor
+                                            }}
+                                            nodes {{
+                                                oid
+                                                message
+                                                author {{
+                                                    name
+                                                }}
+                                                committedDate
+                                            }}
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }}
+                    }}
+                }}
+                user(login: "{}") {{
+                    repositories(first: 100, ownerAffiliations: OWNER{}) {{
+                        pageInfo {{
+                            hasNextPage
+                            endCursor
+                        }}
+                        nodes {{
+                            name
+                            defaultBranchRef {{
+                                target {{
+                                    ... on Commit {{
+                                        history(first: 100, since: "{}", until: "{}") {{
+                                            pageInfo {{
+                                                hasNextPage
+                                                endCursor
+                                            }}
+                                            nodes {{
+                                                oid
+                                                message
+                                                author {{
+                                                    name
+                                                }}
+                                                committedDate
+                                            }}
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }}
+                    }}
+                }}
+            }}
+            "#,
+            org_or_user, after_param, since, until, org_or_user, after_param, since, until
+        )
+    }
+
+    /// Parses commits GraphQL response
+    #[allow(dead_code)]
+    fn parse_commits_response(response: &str, org_or_user: &str) -> Result<Vec<Commit>> {
+        let graphql_response: CommitsGraphQLResponse =
+            serde_json::from_str(response).context("Failed to parse commits GraphQL response")?;
+
+        let data = graphql_response
+            .data
+            .context("No data in commits GraphQL response")?;
+
+        let repositories = if let Some(org) = data.organization {
+            org.repositories.nodes
+        } else if let Some(user) = data.user {
+            user.repositories.nodes
+        } else {
+            anyhow::bail!("Neither organization nor user found in commits response");
+        };
+
+        let mut commits = Vec::new();
+
+        for repo in repositories {
+            let repo_name = repo.name;
+            if let Some(branch_ref) = repo.default_branch_ref {
+                for commit_node in branch_ref.target.history.nodes {
+                    let commit = Commit::new(
+                        commit_node.oid,
+                        commit_node.message,
+                        commit_node.author.name.unwrap_or_else(|| "Unknown".to_string()),
+                        commit_node.committed_date,
+                        format!("{}/{}", org_or_user, repo_name),
+                    );
+                    commits.push(commit);
+                }
+            }
+        }
+
+        Ok(commits)
+    }
+
     #[allow(dead_code)] // Used in tests
     fn parse_response(response: &str) -> Result<GitHubActivity> {
         let graphql_response: GraphQLResponse =
@@ -191,6 +391,57 @@ impl<E: CommandExecutor> GitHubRepository for GhCommandRepository<E> {
             .context("Failed to execute gh command")?;
 
         Self::parse_response(&response)
+    }
+
+    fn fetch_commits(
+        &self,
+        org_or_user: &str,
+        from: NaiveDate,
+        to: NaiveDate,
+    ) -> Result<Vec<Commit>> {
+        let mut all_commits = Vec::new();
+        let mut after_cursor: Option<String> = None;
+
+        // Pagination loop: fetch all commits by following hasNextPage
+        loop {
+            let query = Self::build_commits_query(
+                org_or_user,
+                from,
+                to,
+                after_cursor.as_deref(),
+            );
+            let response = self
+                .executor
+                .execute("gh", &["api", "graphql", "-f", &format!("query={}", query)])
+                .context("Failed to execute gh command for commits")?;
+
+            let commits = Self::parse_commits_response(&response, org_or_user)?;
+            all_commits.extend(commits);
+
+            // Check if there's a next page
+            let graphql_response: CommitsGraphQLResponse =
+                serde_json::from_str(&response).context("Failed to parse pagination info")?;
+
+            let data = graphql_response
+                .data
+                .context("No data in pagination response")?;
+
+            let page_info = if let Some(org) = data.organization {
+                org.repositories.page_info
+            } else if let Some(user) = data.user {
+                user.repositories.page_info
+            } else {
+                anyhow::bail!("Neither organization nor user found in pagination response");
+            };
+
+            if page_info.has_next_page {
+                after_cursor = page_info.end_cursor;
+            } else {
+                break;
+            }
+        }
+
+        Ok(all_commits)
     }
 }
 
@@ -299,5 +550,228 @@ mod tests {
         assert_eq!(activity.pull_requests(), 20);
         assert_eq!(activity.issues(), 15);
         assert_eq!(activity.reviews(), 0);
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn コミットデータをパースできる() {
+        let response = r#"{
+            "data": {
+                "organization": {
+                    "repositories": {
+                        "pageInfo": {
+                            "hasNextPage": false,
+                            "endCursor": null
+                        },
+                        "nodes": [
+                            {
+                                "name": "test-repo",
+                                "defaultBranchRef": {
+                                    "target": {
+                                        "history": {
+                                            "pageInfo": {
+                                                "hasNextPage": false,
+                                                "endCursor": null
+                                            },
+                                            "nodes": [
+                                                {
+                                                    "oid": "abc123",
+                                                    "message": "feat: add new feature",
+                                                    "author": {
+                                                        "name": "John Doe"
+                                                    },
+                                                    "committedDate": "2024-01-15T10:30:00Z"
+                                                },
+                                                {
+                                                    "oid": "def456",
+                                                    "message": "fix: resolve bug",
+                                                    "author": {
+                                                        "name": "Jane Smith"
+                                                    },
+                                                    "committedDate": "2024-01-16T14:20:00Z"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                "user": null
+            }
+        }"#;
+
+        let commits = GhCommandRepository::<MockCommandExecutor>::parse_commits_response(response, "test-org")
+            .expect("Failed to parse commits");
+
+        assert_eq!(commits.len(), 2);
+        assert_eq!(commits[0].sha(), "abc123");
+        assert_eq!(commits[0].message(), "feat: add new feature");
+        assert_eq!(commits[0].author(), "John Doe");
+        assert_eq!(commits[0].repository(), "test-org/test-repo");
+
+        assert_eq!(commits[1].sha(), "def456");
+        assert_eq!(commits[1].message(), "fix: resolve bug");
+        assert_eq!(commits[1].author(), "Jane Smith");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn コミットを取得できる() {
+        let mock_response = r#"{
+            "data": {
+                "organization": {
+                    "repositories": {
+                        "pageInfo": {
+                            "hasNextPage": false,
+                            "endCursor": null
+                        },
+                        "nodes": [
+                            {
+                                "name": "test-repo",
+                                "defaultBranchRef": {
+                                    "target": {
+                                        "history": {
+                                            "pageInfo": {
+                                                "hasNextPage": false,
+                                                "endCursor": null
+                                            },
+                                            "nodes": [
+                                                {
+                                                    "oid": "abc123",
+                                                    "message": "feat: add new feature",
+                                                    "author": {
+                                                        "name": "John Doe"
+                                                    },
+                                                    "committedDate": "2024-01-15T10:30:00Z"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                "user": null
+            }
+        }"#;
+
+        let mock = MockCommandExecutor::new()
+            .with_response("gh api graphql -f query=", mock_response);
+
+        let repository = GhCommandRepository::new(mock);
+        let from = NaiveDate::from_ymd_opt(2024, 1, 1).expect("Invalid date");
+        let to = NaiveDate::from_ymd_opt(2024, 12, 31).expect("Invalid date");
+
+        let commits = repository
+            .fetch_commits("test-org", from, to)
+            .expect("Failed to fetch commits");
+
+        assert_eq!(commits.len(), 1);
+        assert_eq!(commits[0].sha(), "abc123");
+        assert_eq!(commits[0].message(), "feat: add new feature");
+        assert_eq!(commits[0].author(), "John Doe");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn ページネーションでコミットを取得できる() {
+        let first_response = r#"{
+            "data": {
+                "organization": {
+                    "repositories": {
+                        "pageInfo": {
+                            "hasNextPage": true,
+                            "endCursor": "cursor123"
+                        },
+                        "nodes": [
+                            {
+                                "name": "test-repo",
+                                "defaultBranchRef": {
+                                    "target": {
+                                        "history": {
+                                            "pageInfo": {
+                                                "hasNextPage": false,
+                                                "endCursor": null
+                                            },
+                                            "nodes": [
+                                                {
+                                                    "oid": "abc123",
+                                                    "message": "feat: first commit",
+                                                    "author": {
+                                                        "name": "John Doe"
+                                                    },
+                                                    "committedDate": "2024-01-15T10:30:00Z"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                "user": null
+            }
+        }"#;
+
+        let second_response = r#"{
+            "data": {
+                "organization": {
+                    "repositories": {
+                        "pageInfo": {
+                            "hasNextPage": false,
+                            "endCursor": null
+                        },
+                        "nodes": [
+                            {
+                                "name": "test-repo-2",
+                                "defaultBranchRef": {
+                                    "target": {
+                                        "history": {
+                                            "pageInfo": {
+                                                "hasNextPage": false,
+                                                "endCursor": null
+                                            },
+                                            "nodes": [
+                                                {
+                                                    "oid": "def456",
+                                                    "message": "fix: second commit",
+                                                    "author": {
+                                                        "name": "Jane Smith"
+                                                    },
+                                                    "committedDate": "2024-01-16T14:20:00Z"
+                                                }
+                                            ]
+                                        }
+                                    }
+                                }
+                            }
+                        ]
+                    }
+                },
+                "user": null
+            }
+        }"#;
+
+        let mock = MockCommandExecutor::new()
+            .with_response("gh api graphql -f query=", first_response)
+            .with_response("gh api graphql -f query=", second_response);
+
+        let repository = GhCommandRepository::new(mock);
+        let from = NaiveDate::from_ymd_opt(2024, 1, 1).expect("Invalid date");
+        let to = NaiveDate::from_ymd_opt(2024, 12, 31).expect("Invalid date");
+
+        let commits = repository
+            .fetch_commits("test-org", from, to)
+            .expect("Failed to fetch commits with pagination");
+
+        assert_eq!(commits.len(), 2);
+        assert_eq!(commits[0].sha(), "abc123");
+        assert_eq!(commits[0].message(), "feat: first commit");
+        assert_eq!(commits[1].sha(), "def456");
+        assert_eq!(commits[1].message(), "fix: second commit");
     }
 }

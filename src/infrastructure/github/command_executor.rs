@@ -34,20 +34,24 @@ impl CommandExecutor for GhCommandExecutor {
 
 #[cfg(test)]
 pub struct MockCommandExecutor {
-    responses: std::collections::HashMap<String, String>,
+    responses: std::sync::Arc<std::sync::Mutex<Vec<(String, String)>>>,
+    call_count: std::sync::Arc<std::sync::Mutex<usize>>,
 }
 
 #[cfg(test)]
 impl MockCommandExecutor {
     pub fn new() -> Self {
         Self {
-            responses: std::collections::HashMap::new(),
+            responses: std::sync::Arc::new(std::sync::Mutex::new(Vec::new())),
+            call_count: std::sync::Arc::new(std::sync::Mutex::new(0)),
         }
     }
 
-    pub fn with_response(mut self, command_key: &str, response: &str) -> Self {
+    pub fn with_response(self, command_key: &str, response: &str) -> Self {
         self.responses
-            .insert(command_key.to_string(), response.to_string());
+            .lock()
+            .unwrap()
+            .push((command_key.to_string(), response.to_string()));
         self
     }
 }
@@ -57,13 +61,22 @@ impl CommandExecutor for MockCommandExecutor {
     fn execute(&self, program: &str, args: &[&str]) -> Result<String> {
         let key = format!("{} {}", program, args.join(" "));
 
-        // Try exact match first
-        if let Some(response) = self.responses.get(&key) {
-            return Ok(response.clone());
+        let responses = self.responses.lock().unwrap();
+        let mut call_count = self.call_count.lock().unwrap();
+
+        // Try exact match for current call
+        for (i, (pattern, response)) in responses.iter().enumerate() {
+            if key == *pattern || key.starts_with(pattern) {
+                // For multiple responses with the same pattern, return them in order
+                if i == *call_count {
+                    *call_count += 1;
+                    return Ok(response.clone());
+                }
+            }
         }
 
-        // Try prefix match (for queries with variable content)
-        for (pattern, response) in &self.responses {
+        // If no exact match at the call count, try any prefix match
+        for (pattern, response) in responses.iter() {
             if key.starts_with(pattern) {
                 return Ok(response.clone());
             }
