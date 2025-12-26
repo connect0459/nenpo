@@ -118,7 +118,7 @@ impl OutputRepository for HtmlOutputRepository {
             for (theme, count) in themes {
                 content.push_str(&format!(
                     "            <li>{}: <span class=\"stat\">{}</span></li>\n",
-                    theme.display_name(),
+                    theme.short_name(),
                     count
                 ));
             }

@@ -59,7 +59,7 @@ impl OutputRepository for MarkdownOutputRepository {
             themes.sort_by(|a, b| b.1.cmp(a.1)); // Sort by count descending
 
             for (theme, count) in themes {
-                content.push_str(&format!("- {}: {}\n", theme.display_name(), count));
+                content.push_str(&format!("- {}: {}\n", theme.short_name(), count));
             }
         }
 
