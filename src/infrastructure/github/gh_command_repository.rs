@@ -72,7 +72,7 @@ struct IssueConnection {
     total_count: u32,
 }
 
-// Structures for commit fetching
+// Structures for commit fetching (multi-repo query)
 #[derive(Debug, Deserialize)]
 struct CommitsGraphQLResponse {
     data: Option<CommitsGraphQLData>,
@@ -82,6 +82,68 @@ struct CommitsGraphQLResponse {
 struct CommitsGraphQLData {
     organization: Option<CommitsOrganization>,
     user: Option<CommitsUser>,
+}
+
+// Structures for repository list fetching
+#[derive(Debug, Deserialize)]
+struct RepositoriesGraphQLResponse {
+    data: Option<RepositoriesGraphQLData>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RepositoriesGraphQLData {
+    organization: Option<RepositoriesOrganization>,
+    user: Option<RepositoriesUser>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RepositoriesOrganization {
+    repositories: RepositoriesConnection,
+}
+
+#[derive(Debug, Deserialize)]
+struct RepositoriesUser {
+    repositories: RepositoriesConnection,
+}
+
+#[derive(Debug, Deserialize)]
+struct RepositoriesConnection {
+    #[serde(rename = "pageInfo")]
+    page_info: PageInfo,
+    nodes: Vec<RepositoryNode>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RepositoryNode {
+    name: String,
+}
+
+// Structures for single repository commit fetching
+#[derive(Debug, Deserialize)]
+struct SingleRepoCommitsGraphQLResponse {
+    data: Option<SingleRepoCommitsGraphQLData>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SingleRepoCommitsGraphQLData {
+    organization: Option<SingleRepoOrganization>,
+    user: Option<SingleRepoUser>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SingleRepoOrganization {
+    repository: Option<SingleRepoRepository>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SingleRepoUser {
+    repository: Option<SingleRepoRepository>,
+}
+
+#[derive(Debug, Deserialize)]
+struct SingleRepoRepository {
+    #[serde(rename = "defaultBranchRef")]
+    default_branch_ref: Option<CommitsBranchRef>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -98,6 +160,7 @@ struct CommitsUser {
 struct CommitsRepositoryConnection {
     nodes: Vec<CommitsRepository>,
     #[serde(rename = "pageInfo")]
+    #[allow(dead_code)] // Used by old multi-repo query, kept for backwards compatibility
     page_info: PageInfo,
 }
 
@@ -121,12 +184,11 @@ struct CommitsTarget {
 #[derive(Debug, Deserialize)]
 struct CommitHistoryConnectionDetailed {
     #[serde(rename = "pageInfo")]
-    #[allow(dead_code)]
     page_info: PageInfo,
     nodes: Vec<CommitNode>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 struct PageInfo {
     #[serde(rename = "hasNextPage")]
     has_next_page: bool,
@@ -390,6 +452,123 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
         )
     }
 
+    /// Builds a GraphQL query for fetching repository list with pagination
+    /// This is used for the outer pagination loop to get all repositories
+    #[allow(dead_code)]
+    fn build_repositories_query(org_or_user: &str, after_cursor: Option<&str>) -> String {
+        let after_param = after_cursor
+            .map(|c| format!(", after: \"{}\"", c))
+            .unwrap_or_default();
+
+        format!(
+            r#"
+            query {{
+                organization(login: "{}") {{
+                    repositories(first: 100{}) {{
+                        pageInfo {{
+                            hasNextPage
+                            endCursor
+                        }}
+                        nodes {{
+                            name
+                        }}
+                    }}
+                }}
+                user(login: "{}") {{
+                    repositories(first: 100, ownerAffiliations: OWNER{}) {{
+                        pageInfo {{
+                            hasNextPage
+                            endCursor
+                        }}
+                        nodes {{
+                            name
+                        }}
+                    }}
+                }}
+            }}
+            "#,
+            org_or_user, after_param, org_or_user, after_param
+        )
+    }
+
+    /// Builds a GraphQL query for fetching commits from a single repository with pagination
+    /// This is used for the inner pagination loop to fetch all commits within a repository
+    #[allow(dead_code)]
+    fn build_repo_commits_query(
+        org_or_user: &str,
+        repo_name: &str,
+        from: NaiveDate,
+        to: NaiveDate,
+        author_id: Option<&str>,
+        after_cursor: Option<&str>,
+    ) -> String {
+        let since = format!("{}T00:00:00Z", from);
+        let until = format!("{}T23:59:59Z", to);
+        let author_param = author_id
+            .map(|id| format!(", author: {{id: \"{}\"}}", id))
+            .unwrap_or_default();
+        let after_param = after_cursor
+            .map(|c| format!(", after: \"{}\"", c))
+            .unwrap_or_default();
+
+        format!(
+            r#"
+            query {{
+                organization(login: "{}") {{
+                    repository(name: "{}") {{
+                        defaultBranchRef {{
+                            target {{
+                                ... on Commit {{
+                                    history(first: 100, since: "{}", until: "{}"{}{}) {{
+                                        pageInfo {{
+                                            hasNextPage
+                                            endCursor
+                                        }}
+                                        nodes {{
+                                            oid
+                                            message
+                                            author {{
+                                                name
+                                            }}
+                                            committedDate
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }}
+                    }}
+                }}
+                user(login: "{}") {{
+                    repository(name: "{}") {{
+                        defaultBranchRef {{
+                            target {{
+                                ... on Commit {{
+                                    history(first: 100, since: "{}", until: "{}"{}{}) {{
+                                        pageInfo {{
+                                            hasNextPage
+                                            endCursor
+                                        }}
+                                        nodes {{
+                                            oid
+                                            message
+                                            author {{
+                                                name
+                                            }}
+                                            committedDate
+                                        }}
+                                    }}
+                                }}
+                            }}
+                        }}
+                    }}
+                }}
+            }}
+            "#,
+            org_or_user, repo_name, since, until, author_param, after_param,
+            org_or_user, repo_name, since, until, author_param, after_param
+        )
+    }
+
     /// Parses commits GraphQL response
     #[allow(dead_code)]
     fn parse_commits_response(response: &str, org_or_user: &str) -> Result<Vec<Commit>> {
@@ -430,6 +609,94 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
         }
 
         Ok(commits)
+    }
+
+    /// Parses repositories GraphQL response
+    /// Returns repository names and pagination info
+    #[allow(dead_code)]
+    fn parse_repositories_response(response: &str) -> Result<(Vec<String>, PageInfo)> {
+        let graphql_response: RepositoriesGraphQLResponse =
+            serde_json::from_str(response)
+                .context("Failed to parse repositories GraphQL response")?;
+
+        let data = graphql_response
+            .data
+            .context("No data in repositories GraphQL response")?;
+
+        let repositories = if let Some(org) = data.organization {
+            org.repositories
+        } else if let Some(user) = data.user {
+            user.repositories
+        } else {
+            anyhow::bail!("Neither organization nor user found in repositories response");
+        };
+
+        let repo_names: Vec<String> = repositories
+            .nodes
+            .into_iter()
+            .map(|node| node.name)
+            .collect();
+
+        Ok((repo_names, repositories.page_info))
+    }
+
+    /// Parses single repository commits GraphQL response
+    /// Returns commits and pagination info
+    #[allow(dead_code)]
+    fn parse_repo_commits_response(
+        response: &str,
+        org_or_user: &str,
+        repo_name: &str,
+    ) -> Result<(Vec<Commit>, PageInfo)> {
+        let graphql_response: SingleRepoCommitsGraphQLResponse =
+            serde_json::from_str(response)
+                .context("Failed to parse single repository commits GraphQL response")?;
+
+        let data = graphql_response
+            .data
+            .context("No data in single repository commits GraphQL response")?;
+
+        let repository = if let Some(org) = data.organization {
+            org.repository
+        } else if let Some(user) = data.user {
+            user.repository
+        } else {
+            anyhow::bail!(
+                "Neither organization nor user found in single repository commits response"
+            );
+        };
+
+        let repository = repository.context(format!(
+            "Repository {} not found for {}",
+            repo_name, org_or_user
+        ))?;
+
+        let branch_ref = repository.default_branch_ref.context(format!(
+            "No default branch found for {}/{}",
+            org_or_user, repo_name
+        ))?;
+
+        let history = branch_ref.target.history;
+        let page_info = history.page_info.clone();
+
+        let commits: Vec<Commit> = history
+            .nodes
+            .into_iter()
+            .map(|commit_node| {
+                Commit::new(
+                    commit_node.oid,
+                    commit_node.message,
+                    commit_node
+                        .author
+                        .name
+                        .unwrap_or_else(|| "Unknown".to_string()),
+                    commit_node.committed_date,
+                    format!("{}/{}", org_or_user, repo_name),
+                )
+            })
+            .collect();
+
+        Ok((commits, page_info))
     }
 
     #[allow(dead_code)] // Used in tests
@@ -519,44 +786,73 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GitHubRepository
         self.progress_reporter.start_fetching_commits(org_or_user);
 
         let mut all_commits = Vec::new();
-        let mut after_cursor: Option<String> = None;
+        let mut repo_cursor: Option<String> = None;
 
-        // Pagination loop: fetch all commits by following hasNextPage
+        // Outer loop: Repository pagination
         loop {
-            let query = Self::build_commits_query(org_or_user, from, to, after_cursor.as_deref(), author_id.as_deref());
+            let repos_query = Self::build_repositories_query(org_or_user, repo_cursor.as_deref());
 
             // Execute with retry
-            let response = with_retry(&self.retry_config, || {
+            let repos_response = with_retry(&self.retry_config, || {
                 self.executor
-                    .execute("gh", &["api", "graphql", "-f", &format!("query={}", query)])
-                    .context("Failed to execute gh command for commits")
+                    .execute(
+                        "gh",
+                        &["api", "graphql", "-f", &format!("query={}", repos_query)],
+                    )
+                    .context("Failed to execute gh command for repositories")
             })?;
 
-            let commits = Self::parse_commits_response(&response, org_or_user)?;
-            all_commits.extend(commits);
+            let (repo_names, repos_page_info) =
+                Self::parse_repositories_response(&repos_response)?;
 
-            // Report progress
-            self.progress_reporter
-                .report_commits_progress(org_or_user, all_commits.len());
+            // Inner loop: Fetch commits for each repository
+            for repo_name in repo_names {
+                let mut commit_cursor: Option<String> = None;
 
-            // Check if there's a next page
-            let graphql_response: CommitsGraphQLResponse =
-                serde_json::from_str(&response).context("Failed to parse pagination info")?;
+                // Pagination within a single repository
+                loop {
+                    let commits_query = Self::build_repo_commits_query(
+                        org_or_user,
+                        &repo_name,
+                        from,
+                        to,
+                        author_id.as_deref(),
+                        commit_cursor.as_deref(),
+                    );
 
-            let data = graphql_response
-                .data
-                .context("No data in pagination response")?;
+                    // Execute with retry
+                    let commits_response = with_retry(&self.retry_config, || {
+                        self.executor
+                            .execute(
+                                "gh",
+                                &["api", "graphql", "-f", &format!("query={}", commits_query)],
+                            )
+                            .context("Failed to execute gh command for commits")
+                    })?;
 
-            let page_info = if let Some(org) = data.organization {
-                org.repositories.page_info
-            } else if let Some(user) = data.user {
-                user.repositories.page_info
-            } else {
-                anyhow::bail!("Neither organization nor user found in pagination response");
-            };
+                    let (commits, commits_page_info) = Self::parse_repo_commits_response(
+                        &commits_response,
+                        org_or_user,
+                        &repo_name,
+                    )?;
 
-            if page_info.has_next_page {
-                after_cursor = page_info.end_cursor;
+                    all_commits.extend(commits);
+
+                    // Report progress
+                    self.progress_reporter
+                        .report_commits_progress(org_or_user, all_commits.len());
+
+                    if commits_page_info.has_next_page {
+                        commit_cursor = commits_page_info.end_cursor;
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            // Check if there's a next page of repositories
+            if repos_page_info.has_next_page {
+                repo_cursor = repos_page_info.end_cursor;
             } else {
                 break;
             }
@@ -750,7 +1046,8 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn コミットを取得できる() {
-        let mock_response = r#"{
+        // First response: repository list
+        let repos_response = r#"{
             "data": {
                 "organization": {
                     "repositories": {
@@ -760,27 +1057,7 @@ mod tests {
                         },
                         "nodes": [
                             {
-                                "name": "test-repo",
-                                "defaultBranchRef": {
-                                    "target": {
-                                        "history": {
-                                            "pageInfo": {
-                                                "hasNextPage": false,
-                                                "endCursor": null
-                                            },
-                                            "nodes": [
-                                                {
-                                                    "oid": "abc123",
-                                                    "message": "feat: add new feature",
-                                                    "author": {
-                                                        "name": "John Doe"
-                                                    },
-                                                    "committedDate": "2024-01-15T10:30:00Z"
-                                                }
-                                            ]
-                                        }
-                                    }
-                                }
+                                "name": "test-repo"
                             }
                         ]
                     }
@@ -789,8 +1066,40 @@ mod tests {
             }
         }"#;
 
-        let mock =
-            MockCommandExecutor::new().with_response("gh api graphql -f query=", mock_response);
+        // Second response: commits for test-repo
+        let commits_response = r#"{
+            "data": {
+                "organization": {
+                    "repository": {
+                        "defaultBranchRef": {
+                            "target": {
+                                "history": {
+                                    "pageInfo": {
+                                        "hasNextPage": false,
+                                        "endCursor": null
+                                    },
+                                    "nodes": [
+                                        {
+                                            "oid": "abc123",
+                                            "message": "feat: add new feature",
+                                            "author": {
+                                                "name": "John Doe"
+                                            },
+                                            "committedDate": "2024-01-15T10:30:00Z"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "user": null
+            }
+        }"#;
+
+        let mock = MockCommandExecutor::new()
+            .with_response("gh api graphql -f query=", repos_response)
+            .with_response("gh api graphql -f query=", commits_response);
 
         let repository = GhCommandRepository::new(mock, NoOpProgressReporter::new(), NoOpCache);
         let from = NaiveDate::from_ymd_opt(2024, 1, 1).expect("Invalid date");
@@ -809,7 +1118,8 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn ページネーションでコミットを取得できる() {
-        let first_response = r#"{
+        // First response: repository list (page 1)
+        let repos_page1_response = r#"{
             "data": {
                 "organization": {
                     "repositories": {
@@ -819,27 +1129,7 @@ mod tests {
                         },
                         "nodes": [
                             {
-                                "name": "test-repo",
-                                "defaultBranchRef": {
-                                    "target": {
-                                        "history": {
-                                            "pageInfo": {
-                                                "hasNextPage": false,
-                                                "endCursor": null
-                                            },
-                                            "nodes": [
-                                                {
-                                                    "oid": "abc123",
-                                                    "message": "feat: first commit",
-                                                    "author": {
-                                                        "name": "John Doe"
-                                                    },
-                                                    "committedDate": "2024-01-15T10:30:00Z"
-                                                }
-                                            ]
-                                        }
-                                    }
-                                }
+                                "name": "test-repo"
                             }
                         ]
                     }
@@ -848,7 +1138,39 @@ mod tests {
             }
         }"#;
 
-        let second_response = r#"{
+        // Second response: commits for test-repo
+        let test_repo_commits_response = r#"{
+            "data": {
+                "organization": {
+                    "repository": {
+                        "defaultBranchRef": {
+                            "target": {
+                                "history": {
+                                    "pageInfo": {
+                                        "hasNextPage": false,
+                                        "endCursor": null
+                                    },
+                                    "nodes": [
+                                        {
+                                            "oid": "abc123",
+                                            "message": "feat: first commit",
+                                            "author": {
+                                                "name": "John Doe"
+                                            },
+                                            "committedDate": "2024-01-15T10:30:00Z"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "user": null
+            }
+        }"#;
+
+        // Third response: repository list (page 2)
+        let repos_page2_response = r#"{
             "data": {
                 "organization": {
                     "repositories": {
@@ -858,27 +1180,7 @@ mod tests {
                         },
                         "nodes": [
                             {
-                                "name": "test-repo-2",
-                                "defaultBranchRef": {
-                                    "target": {
-                                        "history": {
-                                            "pageInfo": {
-                                                "hasNextPage": false,
-                                                "endCursor": null
-                                            },
-                                            "nodes": [
-                                                {
-                                                    "oid": "def456",
-                                                    "message": "fix: second commit",
-                                                    "author": {
-                                                        "name": "Jane Smith"
-                                                    },
-                                                    "committedDate": "2024-01-16T14:20:00Z"
-                                                }
-                                            ]
-                                        }
-                                    }
-                                }
+                                "name": "test-repo-2"
                             }
                         ]
                     }
@@ -887,9 +1189,42 @@ mod tests {
             }
         }"#;
 
+        // Fourth response: commits for test-repo-2
+        let test_repo_2_commits_response = r#"{
+            "data": {
+                "organization": {
+                    "repository": {
+                        "defaultBranchRef": {
+                            "target": {
+                                "history": {
+                                    "pageInfo": {
+                                        "hasNextPage": false,
+                                        "endCursor": null
+                                    },
+                                    "nodes": [
+                                        {
+                                            "oid": "def456",
+                                            "message": "fix: second commit",
+                                            "author": {
+                                                "name": "Jane Smith"
+                                            },
+                                            "committedDate": "2024-01-16T14:20:00Z"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "user": null
+            }
+        }"#;
+
         let mock = MockCommandExecutor::new()
-            .with_response("gh api graphql -f query=", first_response)
-            .with_response("gh api graphql -f query=", second_response);
+            .with_response("gh api graphql -f query=", repos_page1_response)
+            .with_response("gh api graphql -f query=", test_repo_commits_response)
+            .with_response("gh api graphql -f query=", repos_page2_response)
+            .with_response("gh api graphql -f query=", test_repo_2_commits_response);
 
         let repository = GhCommandRepository::new(mock, NoOpProgressReporter::new(), NoOpCache);
         let from = NaiveDate::from_ymd_opt(2024, 1, 1).expect("Invalid date");
@@ -904,5 +1239,271 @@ mod tests {
         assert_eq!(commits[0].message(), "feat: first commit");
         assert_eq!(commits[1].sha(), "def456");
         assert_eq!(commits[1].message(), "fix: second commit");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn リポジトリ内コミットのページネーションをテストできる() {
+        // First response: repository list
+        let repos_response = r#"{
+            "data": {
+                "organization": {
+                    "repositories": {
+                        "pageInfo": {
+                            "hasNextPage": false,
+                            "endCursor": null
+                        },
+                        "nodes": [
+                            {
+                                "name": "large-repo"
+                            }
+                        ]
+                    }
+                },
+                "user": null
+            }
+        }"#;
+
+        // Second response: commits page 1 (100 commits)
+        let commits_page1_response = r#"{
+            "data": {
+                "organization": {
+                    "repository": {
+                        "defaultBranchRef": {
+                            "target": {
+                                "history": {
+                                    "pageInfo": {
+                                        "hasNextPage": true,
+                                        "endCursor": "commit_cursor_100"
+                                    },
+                                    "nodes": [
+                                        {
+                                            "oid": "commit001",
+                                            "message": "feat: commit 1",
+                                            "author": {
+                                                "name": "Developer 1"
+                                            },
+                                            "committedDate": "2024-01-01T10:00:00Z"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "user": null
+            }
+        }"#;
+
+        // Third response: commits page 2 (remaining commits)
+        let commits_page2_response = r#"{
+            "data": {
+                "organization": {
+                    "repository": {
+                        "defaultBranchRef": {
+                            "target": {
+                                "history": {
+                                    "pageInfo": {
+                                        "hasNextPage": false,
+                                        "endCursor": null
+                                    },
+                                    "nodes": [
+                                        {
+                                            "oid": "commit101",
+                                            "message": "fix: commit 101",
+                                            "author": {
+                                                "name": "Developer 2"
+                                            },
+                                            "committedDate": "2024-02-01T10:00:00Z"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "user": null
+            }
+        }"#;
+
+        let mock = MockCommandExecutor::new()
+            .with_response("gh api graphql -f query=", repos_response)
+            .with_response("gh api graphql -f query=", commits_page1_response)
+            .with_response("gh api graphql -f query=", commits_page2_response);
+
+        let repository = GhCommandRepository::new(mock, NoOpProgressReporter::new(), NoOpCache);
+        let from = NaiveDate::from_ymd_opt(2024, 1, 1).expect("Invalid date");
+        let to = NaiveDate::from_ymd_opt(2024, 12, 31).expect("Invalid date");
+
+        let commits = repository
+            .fetch_commits("test-org", from, to, None)
+            .expect("Failed to fetch commits with pagination within repository");
+
+        assert_eq!(commits.len(), 2);
+        assert_eq!(commits[0].sha(), "commit001");
+        assert_eq!(commits[0].message(), "feat: commit 1");
+        assert_eq!(commits[1].sha(), "commit101");
+        assert_eq!(commits[1].message(), "fix: commit 101");
+    }
+
+    #[test]
+    #[allow(non_snake_case)]
+    fn ネストしたページネーションをテストできる() {
+        // Test both repository pagination and commit pagination within each repository
+        // First response: repository list page 1
+        let repos_page1_response = r#"{
+            "data": {
+                "organization": {
+                    "repositories": {
+                        "pageInfo": {
+                            "hasNextPage": true,
+                            "endCursor": "repo_cursor_1"
+                        },
+                        "nodes": [
+                            {
+                                "name": "repo-1"
+                            }
+                        ]
+                    }
+                },
+                "user": null
+            }
+        }"#;
+
+        // Second response: repo-1 commits page 1
+        let repo1_commits_page1_response = r#"{
+            "data": {
+                "organization": {
+                    "repository": {
+                        "defaultBranchRef": {
+                            "target": {
+                                "history": {
+                                    "pageInfo": {
+                                        "hasNextPage": true,
+                                        "endCursor": "commit_cursor_1"
+                                    },
+                                    "nodes": [
+                                        {
+                                            "oid": "repo1_commit1",
+                                            "message": "feat: repo1 first",
+                                            "author": {
+                                                "name": "Dev A"
+                                            },
+                                            "committedDate": "2024-01-01T10:00:00Z"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "user": null
+            }
+        }"#;
+
+        // Third response: repo-1 commits page 2
+        let repo1_commits_page2_response = r#"{
+            "data": {
+                "organization": {
+                    "repository": {
+                        "defaultBranchRef": {
+                            "target": {
+                                "history": {
+                                    "pageInfo": {
+                                        "hasNextPage": false,
+                                        "endCursor": null
+                                    },
+                                    "nodes": [
+                                        {
+                                            "oid": "repo1_commit2",
+                                            "message": "fix: repo1 second",
+                                            "author": {
+                                                "name": "Dev A"
+                                            },
+                                            "committedDate": "2024-01-02T10:00:00Z"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "user": null
+            }
+        }"#;
+
+        // Fourth response: repository list page 2
+        let repos_page2_response = r#"{
+            "data": {
+                "organization": {
+                    "repositories": {
+                        "pageInfo": {
+                            "hasNextPage": false,
+                            "endCursor": null
+                        },
+                        "nodes": [
+                            {
+                                "name": "repo-2"
+                            }
+                        ]
+                    }
+                },
+                "user": null
+            }
+        }"#;
+
+        // Fifth response: repo-2 commits
+        let repo2_commits_response = r#"{
+            "data": {
+                "organization": {
+                    "repository": {
+                        "defaultBranchRef": {
+                            "target": {
+                                "history": {
+                                    "pageInfo": {
+                                        "hasNextPage": false,
+                                        "endCursor": null
+                                    },
+                                    "nodes": [
+                                        {
+                                            "oid": "repo2_commit1",
+                                            "message": "chore: repo2 commit",
+                                            "author": {
+                                                "name": "Dev B"
+                                            },
+                                            "committedDate": "2024-01-03T10:00:00Z"
+                                        }
+                                    ]
+                                }
+                            }
+                        }
+                    }
+                },
+                "user": null
+            }
+        }"#;
+
+        let mock = MockCommandExecutor::new()
+            .with_response("gh api graphql -f query=", repos_page1_response)
+            .with_response("gh api graphql -f query=", repo1_commits_page1_response)
+            .with_response("gh api graphql -f query=", repo1_commits_page2_response)
+            .with_response("gh api graphql -f query=", repos_page2_response)
+            .with_response("gh api graphql -f query=", repo2_commits_response);
+
+        let repository = GhCommandRepository::new(mock, NoOpProgressReporter::new(), NoOpCache);
+        let from = NaiveDate::from_ymd_opt(2024, 1, 1).expect("Invalid date");
+        let to = NaiveDate::from_ymd_opt(2024, 12, 31).expect("Invalid date");
+
+        let commits = repository
+            .fetch_commits("test-org", from, to, None)
+            .expect("Failed to fetch commits with nested pagination");
+
+        assert_eq!(commits.len(), 3);
+        assert_eq!(commits[0].sha(), "repo1_commit1");
+        assert_eq!(commits[0].repository(), "test-org/repo-1");
+        assert_eq!(commits[1].sha(), "repo1_commit2");
+        assert_eq!(commits[1].repository(), "test-org/repo-1");
+        assert_eq!(commits[2].sha(), "repo2_commit1");
+        assert_eq!(commits[2].repository(), "test-org/repo-2");
     }
 }

@@ -98,47 +98,48 @@
 
 **関連ADR**: [ADR-003](adrs/adr-003-paginate-commits-within-repositories.md)
 
-### Phase 3.1: 設計とデータ構造の準備
+### Phase 3.1: 設計とデータ構造の準備 ✅
 
-- [ ] CommitHistoryConnectionDetailedにpageInfo追加を確認
-- [ ] PageInfo構造体の再利用性を確認
-- [ ] GraphQLレスポンス構造の分析
-  - [ ] 単一リポジトリのコミット履歴取得クエリをテスト
-  - [ ] pageInfoとafterパラメータの動作確認
+- [x] CommitHistoryConnectionDetailedにpageInfo追加を確認
+- [x] PageInfo構造体の再利用性を確認
+- [x] GraphQLレスポンス構造の分析
+  - [x] 単一リポジトリのコミット履歴取得クエリをテスト
+  - [x] pageInfoとafterパラメータの動作確認
 
-### Phase 3.2: GraphQLクエリの修正
+### Phase 3.2: GraphQLクエリの修正 ✅
 
-- [ ] build_commits_query()の修正案を決定
-  - [ ] Option A: 既存クエリにhistoryのafterパラメータを追加
-  - [ ] Option B: build_repo_commits_query()を新規作成（単一リポジトリ用）
-- [ ] 選択したオプションでクエリを実装
-- [ ] クエリのテスト（手動でgh api graphqlで確認）
+- [x] build_commits_query()の修正案を決定
+  - [x] Option B: build_repo_commits_query()を新規作成（単一リポジトリ用）
+- [x] 選択したオプションでクエリを実装
+  - [x] build_repo_commits_query() 作成
+  - [x] build_repositories_query() 作成
+  - [x] parse_repo_commits_response() 作成
+  - [x] parse_repositories_response() 作成
+- [x] クエリのテスト（手動でgh api graphqlで確認）
 
-### Phase 3.3: コアロジックの実装
+### Phase 3.3: コアロジックの実装 ✅
 
-- [ ] fetch_commits()メソッドの修正
-  - [ ] リポジトリリストの取得ループ（外側）を維持
-  - [ ] 各リポジトリのコミット履歴のページネーションループ（内側）を追加
-  - [ ] ネストしたループの実装
-  - [ ] エラーハンドリングの追加
-- [ ] parse_commits_response()の修正（必要に応じて）
-- [ ] 進捗報告の改善
-  - [ ] リポジトリごとの進捗表示
-  - [ ] 現在のリポジトリ名の表示
+- [x] fetch_commits()メソッドの修正
+  - [x] リポジトリリストの取得ループ（外側）を実装
+  - [x] 各リポジトリのコミット履歴のページネーションループ（内側）を追加
+  - [x] ネストしたループの実装
+  - [x] エラーハンドリング（既存のwith_retryを活用）
+- [x] 新しいパース関数の実装
+- [x] 進捗報告（既存のProgressReporterを活用）
 
-### Phase 3.4: テストの追加
+### Phase 3.4: テストの追加 ✅
 
-- [ ] ユニットテストの追加
-  - [ ] リポジトリ内コミットのページネーションをテスト
-  - [ ] 100件を超えるコミットを持つリポジトリのテスト
-  - [ ] ネストしたページネーションのテスト
-  - [ ] pageInfoのhasNextPageがfalseの場合のテスト
-- [ ] 既存テストの修正（必要に応じて）
-- [ ] テストカバレッジの確認（目標: 80%以上維持）
+- [x] ユニットテストの追加
+  - [x] リポジトリ内コミットのページネーションをテスト
+  - [x] 100件を超えるコミットを持つリポジトリのテスト
+  - [x] ネストしたページネーションのテスト
+  - [x] pageInfoのhasNextPageがfalseの場合のテスト
+- [x] 既存テストの修正（2つのテストを新しい実装に対応）
+- [x] テストカバレッジの確認（88.42%、目標80%超過）
 
-### Phase 3.5: 統合テストと動作確認
+### Phase 3.5: 統合テストと動作確認 🔄
 
-- [ ] キャッシュをクリア
+- [x] キャッシュをクリア
 - [ ] voyagegroup組織でテスト実行
   - [ ] ecnaviリポジトリで646件すべて取得できることを確認
   - [ ] ecnavi-enquete-appで100件以上取得できることを確認
