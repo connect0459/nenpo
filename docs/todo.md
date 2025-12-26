@@ -24,9 +24,12 @@
   - [x] CLI構造定義（clap）
   - [x] generateコマンド実装
 
-## Phase 2: 拡張（次のステップ）
+## Phase 2: 拡張
 
-- [ ] 実際のGitHubデータ取得（gh コマンド実行）
+- [x] 実際のGitHubデータ取得（gh コマンド実行）
+  - [x] CommandExecutorトレイト定義
+  - [x] GraphQL API実装
+  - [x] MockCommandExecutorによるテスト
 - [ ] ローカルドキュメント読み込み
 - [ ] 複数部門のサポート
 - [ ] JSON/HTML形式での出力
