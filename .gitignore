@@ -1,4 +1,7 @@
 /target
 
+# coverage
+/coverage
+
 # local docs
 /local-docs
