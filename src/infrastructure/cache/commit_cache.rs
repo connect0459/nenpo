@@ -12,11 +12,17 @@ pub trait CommitCache {
     /// # Returns
     ///
     /// `Some(commits)` if cache hit, `None` if cache miss
-    fn get(&self, org_or_user: &str, from: NaiveDate, to: NaiveDate) -> Result<Option<Vec<Commit>>>;
+    fn get(&self, org_or_user: &str, from: NaiveDate, to: NaiveDate)
+        -> Result<Option<Vec<Commit>>>;
 
     /// Sets commits in cache
-    fn set(&self, org_or_user: &str, from: NaiveDate, to: NaiveDate, commits: &[Commit])
-        -> Result<()>;
+    fn set(
+        &self,
+        org_or_user: &str,
+        from: NaiveDate,
+        to: NaiveDate,
+        commits: &[Commit],
+    ) -> Result<()>;
 
     /// Clears all cached data
     fn clear(&self) -> Result<()>;
@@ -26,11 +32,22 @@ pub trait CommitCache {
 pub struct NoOpCache;
 
 impl CommitCache for NoOpCache {
-    fn get(&self, _org_or_user: &str, _from: NaiveDate, _to: NaiveDate) -> Result<Option<Vec<Commit>>> {
+    fn get(
+        &self,
+        _org_or_user: &str,
+        _from: NaiveDate,
+        _to: NaiveDate,
+    ) -> Result<Option<Vec<Commit>>> {
         Ok(None)
     }
 
-    fn set(&self, _org_or_user: &str, _from: NaiveDate, _to: NaiveDate, _commits: &[Commit]) -> Result<()> {
+    fn set(
+        &self,
+        _org_or_user: &str,
+        _from: NaiveDate,
+        _to: NaiveDate,
+        _commits: &[Commit],
+    ) -> Result<()> {
         Ok(())
     }
 
@@ -65,8 +82,7 @@ impl FileCache {
     pub fn with_cache_dir(cache_dir: PathBuf) -> Result<Self> {
         // Create cache directory if it doesn't exist
         if !cache_dir.exists() {
-            fs::create_dir_all(&cache_dir)
-                .context("Failed to create cache directory")?;
+            fs::create_dir_all(&cache_dir).context("Failed to create cache directory")?;
         }
 
         Ok(Self { cache_dir })
@@ -80,7 +96,8 @@ impl FileCache {
 
     /// Generates a cache file path for the given parameters
     fn cache_file_path(&self, org_or_user: &str, from: NaiveDate, to: NaiveDate) -> PathBuf {
-        let filename = format!("{}_{}_{}_{}",
+        let filename = format!(
+            "{}_{}_{}_{}",
             org_or_user,
             from.format("%Y%m%d"),
             to.format("%Y%m%d"),
@@ -91,18 +108,22 @@ impl FileCache {
 }
 
 impl CommitCache for FileCache {
-    fn get(&self, org_or_user: &str, from: NaiveDate, to: NaiveDate) -> Result<Option<Vec<Commit>>> {
+    fn get(
+        &self,
+        org_or_user: &str,
+        from: NaiveDate,
+        to: NaiveDate,
+    ) -> Result<Option<Vec<Commit>>> {
         let cache_file = self.cache_file_path(org_or_user, from, to);
 
         if !cache_file.exists() {
             return Ok(None);
         }
 
-        let content = fs::read_to_string(&cache_file)
-            .context("Failed to read cache file")?;
+        let content = fs::read_to_string(&cache_file).context("Failed to read cache file")?;
 
-        let entry: CacheEntry = serde_json::from_str(&content)
-            .context("Failed to deserialize cache entry")?;
+        let entry: CacheEntry =
+            serde_json::from_str(&content).context("Failed to deserialize cache entry")?;
 
         Ok(Some(entry.commits))
     }
@@ -123,11 +144,10 @@ impl CommitCache for FileCache {
             commits: commits.to_vec(),
         };
 
-        let json = serde_json::to_string_pretty(&entry)
-            .context("Failed to serialize cache entry")?;
+        let json =
+            serde_json::to_string_pretty(&entry).context("Failed to serialize cache entry")?;
 
-        fs::write(&cache_file, json)
-            .context("Failed to write cache file")?;
+        fs::write(&cache_file, json).context("Failed to write cache file")?;
 
         Ok(())
     }
@@ -162,7 +182,9 @@ mod tests {
         let from = NaiveDate::from_ymd_opt(2024, 1, 1).unwrap();
         let to = NaiveDate::from_ymd_opt(2024, 12, 31).unwrap();
 
-        let result = cache.get("test-org", from, to).expect("Failed to get cache");
+        let result = cache
+            .get("test-org", from, to)
+            .expect("Failed to get cache");
         assert!(result.is_none());
     }
 
@@ -231,7 +253,9 @@ mod tests {
 
         cache.clear().expect("Failed to clear cache");
 
-        let result = cache.get("test-org", from, to).expect("Failed to get cache");
+        let result = cache
+            .get("test-org", from, to)
+            .expect("Failed to get cache");
         assert!(result.is_none());
     }
 

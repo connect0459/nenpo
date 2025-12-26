@@ -59,7 +59,10 @@ fn main() {
             // Create shared repository instances
             let config_repo = TomlConfigRepository::new();
             let cache = FileCache::new().unwrap_or_else(|e| {
-                eprintln!("Warning: Failed to create cache: {}. Proceeding without cache.", e);
+                eprintln!(
+                    "Warning: Failed to create cache: {}. Proceeding without cache.",
+                    e
+                );
                 std::process::exit(1);
             });
             let github_repo = GhCommandRepository::new(

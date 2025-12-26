@@ -108,8 +108,7 @@ mod tests {
         );
 
         let json = serde_json::to_string(&commit).expect("Failed to serialize");
-        let deserialized: Commit =
-            serde_json::from_str(&json).expect("Failed to deserialize");
+        let deserialized: Commit = serde_json::from_str(&json).expect("Failed to deserialize");
 
         assert_eq!(commit, deserialized);
     }

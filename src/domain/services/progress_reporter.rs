@@ -38,7 +38,10 @@ impl ProgressReporter for StdoutProgressReporter {
     }
 
     fn report_commits_progress(&self, org_or_user: &str, fetched_count: usize) {
-        eprintln!("  {} commits fetched from {}...", fetched_count, org_or_user);
+        eprintln!(
+            "  {} commits fetched from {}...",
+            fetched_count, org_or_user
+        );
     }
 
     fn finish_fetching_commits(&self, org_or_user: &str, total_count: usize) {

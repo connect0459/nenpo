@@ -474,13 +474,12 @@ mod tests {
             ),
         ];
 
-        let theme_summary =
-            ReportGenerator::<
-                MockConfigRepository,
-                MockGitHubRepository,
-                MockDocumentRepository,
-                MockOutputRepository,
-            >::build_theme_summary(&commits);
+        let theme_summary = ReportGenerator::<
+            MockConfigRepository,
+            MockGitHubRepository,
+            MockDocumentRepository,
+            MockOutputRepository,
+        >::build_theme_summary(&commits);
 
         assert_eq!(theme_summary.get(&CommitTheme::Feat), Some(&2));
         assert_eq!(theme_summary.get(&CommitTheme::Fix), Some(&1));

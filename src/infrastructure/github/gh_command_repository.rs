@@ -170,7 +170,10 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
 
     /// Creates a new GhCommandRepository instance without cache
     #[allow(dead_code)]
-    pub fn without_cache(executor: E, progress_reporter: P) -> GhCommandRepository<E, P, NoOpCache> {
+    pub fn without_cache(
+        executor: E,
+        progress_reporter: P,
+    ) -> GhCommandRepository<E, P, NoOpCache> {
         GhCommandRepository {
             executor,
             progress_reporter,
@@ -181,7 +184,12 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
 
     /// Creates a new GhCommandRepository instance with custom retry configuration
     #[allow(dead_code)]
-    pub fn with_retry_config(executor: E, progress_reporter: P, cache: C, retry_config: RetryConfig) -> Self {
+    pub fn with_retry_config(
+        executor: E,
+        progress_reporter: P,
+        cache: C,
+        retry_config: RetryConfig,
+    ) -> Self {
         Self {
             executor,
             progress_reporter,
@@ -358,7 +366,10 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
                     let commit = Commit::new(
                         commit_node.oid,
                         commit_node.message,
-                        commit_node.author.name.unwrap_or_else(|| "Unknown".to_string()),
+                        commit_node
+                            .author
+                            .name
+                            .unwrap_or_else(|| "Unknown".to_string()),
                         commit_node.committed_date,
                         format!("{}/{}", org_or_user, repo_name),
                     );
@@ -410,7 +421,9 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GhCommandRepositor
     }
 }
 
-impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GitHubRepository for GhCommandRepository<E, P, C> {
+impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GitHubRepository
+    for GhCommandRepository<E, P, C>
+{
     fn fetch_activity(
         &self,
         org_or_user: &str,
@@ -435,7 +448,11 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GitHubRepository f
         // Check cache first
         if let Some(ref cache) = self.cache {
             if let Some(cached_commits) = cache.get(org_or_user, from, to)? {
-                eprintln!("✓ Using cached commits for {} ({} commits)", org_or_user, cached_commits.len());
+                eprintln!(
+                    "✓ Using cached commits for {} ({} commits)",
+                    org_or_user,
+                    cached_commits.len()
+                );
                 return Ok(cached_commits);
             }
         }
@@ -447,12 +464,7 @@ impl<E: CommandExecutor, P: ProgressReporter, C: CommitCache> GitHubRepository f
 
         // Pagination loop: fetch all commits by following hasNextPage
         loop {
-            let query = Self::build_commits_query(
-                org_or_user,
-                from,
-                to,
-                after_cursor.as_deref(),
-            );
+            let query = Self::build_commits_query(org_or_user, from, to, after_cursor.as_deref());
 
             // Execute with retry
             let response = with_retry(&self.retry_config, || {
@@ -718,8 +730,8 @@ mod tests {
             }
         }"#;
 
-        let mock = MockCommandExecutor::new()
-            .with_response("gh api graphql -f query=", mock_response);
+        let mock =
+            MockCommandExecutor::new().with_response("gh api graphql -f query=", mock_response);
 
         let repository = GhCommandRepository::new(mock, NoOpProgressReporter::new(), NoOpCache);
         let from = NaiveDate::from_ymd_opt(2024, 1, 1).expect("Invalid date");
