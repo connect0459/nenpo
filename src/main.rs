@@ -5,9 +5,12 @@ mod presentation;
 
 use application::services::report_generator::ReportGenerator;
 use clap::Parser;
+use domain::value_objects::output_format::OutputFormat;
 use infrastructure::config::toml_config_repository::TomlConfigRepository;
 use infrastructure::document::local_file_document_repository::LocalFileDocumentRepository;
 use infrastructure::github::{GhCommandExecutor, GhCommandRepository};
+use infrastructure::output::html_output_repository::HtmlOutputRepository;
+use infrastructure::output::json_output_repository::JsonOutputRepository;
 use infrastructure::output::markdown_output_repository::MarkdownOutputRepository;
 use presentation::cli::{Cli, Commands};
 use std::path::Path;
@@ -36,15 +39,11 @@ fn main() {
             }
             println!();
 
-            // Create repository instances
-            let config_repo = TomlConfigRepository::new();
-            let github_repo = GhCommandRepository::new(GhCommandExecutor::new());
-            let document_repo = LocalFileDocumentRepository::new();
-            let output_repo = MarkdownOutputRepository::new();
-
-            // Create report generator
-            let generator =
-                ReportGenerator::new(config_repo, github_repo, document_repo, output_repo);
+            // Parse output format
+            let output_format = format
+                .as_deref()
+                .and_then(|f| OutputFormat::from_str(f).ok())
+                .unwrap_or(OutputFormat::Markdown);
 
             // Determine output directory
             let output_dir = Path::new("./reports");
@@ -55,8 +54,52 @@ fn main() {
                 }
             }
 
-            // Generate reports
-            match generator.generate(Path::new(&config), year, department.as_deref(), output_dir) {
+            // Create shared repository instances
+            let config_repo = TomlConfigRepository::new();
+            let github_repo = GhCommandRepository::new(GhCommandExecutor::new());
+            let document_repo = LocalFileDocumentRepository::new();
+
+            // Generate reports based on format
+            let result = match output_format {
+                OutputFormat::Markdown => {
+                    let output_repo = MarkdownOutputRepository::new();
+                    let generator =
+                        ReportGenerator::new(config_repo, github_repo, document_repo, output_repo);
+                    generator.generate(
+                        Path::new(&config),
+                        year,
+                        department.as_deref(),
+                        output_dir,
+                        "md",
+                    )
+                }
+                OutputFormat::Json => {
+                    let output_repo = JsonOutputRepository::new();
+                    let generator =
+                        ReportGenerator::new(config_repo, github_repo, document_repo, output_repo);
+                    generator.generate(
+                        Path::new(&config),
+                        year,
+                        department.as_deref(),
+                        output_dir,
+                        "json",
+                    )
+                }
+                OutputFormat::Html => {
+                    let output_repo = HtmlOutputRepository::new();
+                    let generator =
+                        ReportGenerator::new(config_repo, github_repo, document_repo, output_repo);
+                    generator.generate(
+                        Path::new(&config),
+                        year,
+                        department.as_deref(),
+                        output_dir,
+                        "html",
+                    )
+                }
+            };
+
+            match result {
                 Ok(files) => {
                     println!("✅ Successfully generated {} report(s):", files.len());
                     for file in files {

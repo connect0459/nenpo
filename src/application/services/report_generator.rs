@@ -54,6 +54,7 @@ where
         year: Option<u32>,
         department_filter: Option<&str>,
         output_dir: &Path,
+        file_extension: &str,
     ) -> Result<Vec<String>> {
         // Load configuration
         let config = self
@@ -112,7 +113,12 @@ where
             );
 
             // Output report
-            let output_filename = format!("report-{}-{}.md", department.name(), fiscal_year);
+            let output_filename = format!(
+                "report-{}-{}.{}",
+                department.name(),
+                fiscal_year,
+                file_extension
+            );
             let output_path = output_dir.join(&output_filename);
             self.output_repository.output(&report, &output_path)?;
 
@@ -242,7 +248,13 @@ mod tests {
         let generator = ReportGenerator::new(config_repo, github_repo, document_repo, output_repo);
 
         let temp_dir = tempfile::TempDir::new().expect("Failed to create temp dir");
-        let result = generator.generate(Path::new("dummy.toml"), Some(2024), None, temp_dir.path());
+        let result = generator.generate(
+            Path::new("dummy.toml"),
+            Some(2024),
+            None,
+            temp_dir.path(),
+            "md",
+        );
 
         assert!(result.is_ok());
         let files = result.unwrap();
@@ -299,7 +311,13 @@ mod tests {
         let generator = ReportGenerator::new(config_repo, github_repo, document_repo, output_repo);
 
         let temp_dir = tempfile::TempDir::new().expect("Failed to create temp dir");
-        let result = generator.generate(Path::new("dummy.toml"), Some(2024), None, temp_dir.path());
+        let result = generator.generate(
+            Path::new("dummy.toml"),
+            Some(2024),
+            None,
+            temp_dir.path(),
+            "md",
+        );
 
         assert!(result.is_ok());
         let files = result.unwrap();
@@ -357,6 +375,7 @@ mod tests {
             Some(2024),
             Some("個人"),
             temp_dir.path(),
+            "md",
         );
 
         assert!(result.is_ok());

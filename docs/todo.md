@@ -42,5 +42,9 @@
   - [x] 部門フィルタ機能
   - [x] 年度期間計算
   - [x] main.rsへの統合
-- [ ] JSON/HTML形式での出力
+- [x] JSON/HTML形式での出力
+  - [x] JsonOutputRepository実装
+  - [x] HtmlOutputRepository実装
+  - [x] ReportGeneratorにファイル拡張子パラメータ追加
+  - [x] main.rsでフォーマット選択機能
 - [ ] Conventional Commitsによるテーマ別要約
