@@ -85,21 +85,20 @@ mod tests {
     use std::io::Write;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn TOMLファイルから設定を読み込める() {
+    fn loads_config_from_toml_file() {
         let toml_content = r#"
 default_fiscal_year_start_month = 4
 default_output_format = "markdown"
 output_directory = "./reports"
 
 [[departments]]
-name = "個人"
+name = "Personal"
 fiscal_year_start_month = 4
 github_organizations = ["connect0459"]
 local_documents = []
 
 [[departments]]
-name = "企業"
+name = "Corporate"
 fiscal_year_start_month = 4
 github_organizations = ["voyagegroup"]
 local_documents = ["docs/**/*.md"]
@@ -120,15 +119,14 @@ local_documents = ["docs/**/*.md"]
         assert_eq!(config.output_directory(), "./reports");
         assert_eq!(config.target_github_user(), None);
         assert_eq!(config.departments().len(), 2);
-        assert_eq!(config.departments()[0].name(), "個人");
-        assert_eq!(config.departments()[1].name(), "企業");
+        assert_eq!(config.departments()[0].name(), "Personal");
+        assert_eq!(config.departments()[1].name(), "Corporate");
 
         fs::remove_file(temp_file).expect("Failed to remove temp file");
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn target_github_userを含む設定を読み込める() {
+    fn loads_config_with_target_github_user() {
         let toml_content = r#"
 target_github_user = "connect0459"
 default_fiscal_year_start_month = 1
@@ -136,7 +134,7 @@ default_output_format = "markdown"
 output_directory = "./reports"
 
 [[departments]]
-name = "個人"
+name = "Personal"
 fiscal_year_start_month = 1
 github_organizations = ["connect0459"]
 local_documents = []
@@ -160,8 +158,7 @@ local_documents = []
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 存在しないファイルを読み込むとエラーになる() {
+    fn returns_error_when_loading_nonexistent_file() {
         let repository = TomlConfigRepository::new();
         let result = repository.load(Path::new("/tmp/nonexistent_config.toml"));
         assert!(result.is_err());

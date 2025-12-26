@@ -80,8 +80,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn NoOpProgressReporterは何も出力しない() {
+    fn noop_progress_reporter_outputs_nothing() {
         let reporter = NoOpProgressReporter::new();
 
         // These should not panic and do nothing
@@ -92,8 +91,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn StdoutProgressReporterを作成できる() {
+    fn creates_stdout_progress_reporter() {
         let reporter = StdoutProgressReporter::new();
 
         // Basic smoke test - these will output to stderr

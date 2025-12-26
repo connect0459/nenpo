@@ -905,8 +905,7 @@ mod tests {
     use chrono::NaiveDate;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn GraphQLレスポンスをパースできる() {
+    fn parses_graphql_response() {
         let response = r#"{
             "data": {
                 "organization": {
@@ -959,8 +958,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn GitHub活動データを取得できる() {
+    fn fetches_github_activity_data() {
         let mock_response = r#"{
             "data": {
                 "organization": {
@@ -1006,8 +1004,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn コミットデータをパースできる() {
+    fn parses_commit_data() {
         let response = r#"{
             "data": {
                 "organization": {
@@ -1070,8 +1067,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn コミットを取得できる() {
+    fn fetches_commits() {
         // First response: repository list
         let repos_response = r#"{
             "data": {
@@ -1142,8 +1138,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn ページネーションでコミットを取得できる() {
+    fn fetches_commits_with_pagination() {
         // First response: repository list (page 1)
         let repos_page1_response = r#"{
             "data": {
@@ -1268,8 +1263,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn リポジトリ内コミットのページネーションをテストできる() {
+    fn tests_pagination_for_commits_in_repository() {
         // First response: repository list
         let repos_response = r#"{
             "data": {
@@ -1373,8 +1367,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn ネストしたページネーションをテストできる() {
+    fn tests_nested_pagination() {
         // Test both repository pagination and commit pagination within each repository
         // First response: repository list page 1
         let repos_page1_response = r#"{

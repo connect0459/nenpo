@@ -32,8 +32,7 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn JSONファイルにレポートを出力できる() {
+    fn outputs_report_to_json_file() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let output_path = temp_dir.path().join("test_report.json");
 
@@ -66,8 +65,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 出力したJSONを読み込める() {
+    fn loads_output_json() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let output_path = temp_dir.path().join("test_report_roundtrip.json");
 

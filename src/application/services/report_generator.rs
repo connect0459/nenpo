@@ -260,8 +260,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 単一部門のレポートを生成できる() {
+    fn generates_report_for_single_department() {
         let dept = Department::new("個人".to_string(), 4, vec!["test-org".to_string()], vec![]);
         let config = Config::new(
             4,
@@ -305,8 +304,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 複数部門のレポートを生成できる() {
+    fn generates_reports_for_multiple_departments() {
         let dept1 = Department::new(
             "個人".to_string(),
             4,
@@ -368,8 +366,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 特定部門のみレポートを生成できる() {
+    fn generates_report_for_specific_department_only() {
         let dept1 = Department::new(
             "個人".to_string(),
             4,
@@ -427,8 +424,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 年度期間を正しく計算できる() {
+    fn calculates_fiscal_period_correctly() {
         // Fiscal year starting in April
         let (from, to) = calculate_fiscal_period(2024, 4);
         assert_eq!(from, NaiveDate::from_ymd_opt(2024, 4, 1).unwrap());
@@ -441,8 +437,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn コミットメッセージからテーマ別要約を構築できる() {
+    fn builds_theme_summary_from_commit_messages() {
         use chrono::{TimeZone, Utc};
 
         let commits = vec![

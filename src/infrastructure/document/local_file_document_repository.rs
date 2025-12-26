@@ -54,8 +54,7 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn Globパターンでドキュメントを取得できる() {
+    fn retrieves_documents_with_glob_pattern() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let temp_path = temp_dir.path();
 
@@ -79,8 +78,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 複数のGlobパターンでドキュメントを取得できる() {
+    fn retrieves_documents_with_multiple_glob_patterns() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let temp_path = temp_dir.path();
 
@@ -105,8 +103,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn パターンにマッチするファイルがない場合は空のVecを返す() {
+    fn returns_empty_vec_when_no_files_match_pattern() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let temp_path = temp_dir.path();
 
@@ -124,8 +121,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn ファイルの内容を正しく読み込める() {
+    fn reads_file_content_correctly() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let temp_path = temp_dir.path();
 

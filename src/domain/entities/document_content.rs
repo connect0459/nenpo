@@ -33,8 +33,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn ドキュメントを作成できる() {
+    fn creates_document() {
         let doc = DocumentContent::new(
             "docs/README.md".to_string(),
             "# Title\n\nContent here".to_string(),
@@ -45,8 +44,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 空のコンテンツでドキュメントを作成できる() {
+    fn creates_document_with_empty_content() {
         let doc = DocumentContent::new("empty.md".to_string(), String::new());
 
         assert_eq!(doc.file_path(), "empty.md");

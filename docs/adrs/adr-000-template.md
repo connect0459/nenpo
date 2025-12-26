@@ -1,37 +1,37 @@
-# ADR-000: テンプレート
+# ADR-000: Template
 
-## ステータス
+## Status
 
 - [ ] Proposed
 - [ ] Accepted
 - [ ] Deprecated
 
-## コンテキスト
+## Context
 
-コンテキストを記述
+Describe the context
 
-## 決定事項
+## Decision
 
-決定事項と実現までの実行計画を記述
+Describe the decision and execution plan to realize it
 
-## 結果
+## Consequences
 
-結果や影響範囲などを記述
+Describe the consequences and impact scope
 
-## 参考資料
+## References
 
-資料をURL付きで箇条書き
+List references with URLs
 
-## 関連ファイルのパス
+## Related File Paths
 
-編集したファイルのプロジェクトルートからのパスを全て記述
+List all file paths from the project root that were edited
 
-### 初期実装時 (2025-01-01)
+### Initial Implementation (2025-01-01)
 
 - src/api/user.js
 - docs/api-spec.md
 
-### 修正時 (2025-07-01)
+### Modification (2025-07-01)
 
-- src/api/user.js (認証ロジック追加)
-- src/middleware/auth.js (新規)
+- src/api/user.js (added authentication logic)
+- src/middleware/auth.js (new)

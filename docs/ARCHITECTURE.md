@@ -20,22 +20,22 @@ The innermost layer containing business logic and entities.
 **Modules:**
 
 - `domain::entities`: Domain entities
-  - `Commit`: GitHubコミット情報（SHA、メッセージ、作成者、日時、リポジトリ）
-  - `Department`: 部門情報
-  - `Report`: 年次報告書
-  - `GitHubActivity`: GitHub活動統計
-  - `DocumentContent`: ローカルドキュメント内容
-  - `Config`: アプリケーション設定
+  - `Commit`: GitHub commit information (SHA, message, author, date, repository)
+  - `Department`: Department information
+  - `Report`: Annual report
+  - `GitHubActivity`: GitHub activity statistics
+  - `DocumentContent`: Local document content
+  - `Config`: Application configuration
 - `domain::value_objects`: Value objects
-  - `CommitTheme`: Conventional Commitsのテーマ（feat, fix, docs, etc.）
-  - `OutputFormat`: 出力形式（Markdown, JSON, HTML）
+  - `CommitTheme`: Conventional Commits theme (feat, fix, docs, etc.)
+  - `OutputFormat`: Output format (Markdown, JSON, HTML)
 - `domain::repositories`: Repository trait definitions
-  - `ConfigRepository`: 設定リポジトリ
-  - `GitHubRepository`: GitHubデータ取得リポジトリ
-  - `DocumentRepository`: ドキュメントリポジトリ
-  - `OutputRepository`: 出力リポジトリ
+  - `ConfigRepository`: Configuration repository
+  - `GitHubRepository`: GitHub data fetching repository
+  - `DocumentRepository`: Document repository
+  - `OutputRepository`: Output repository
 - `domain::services`: Domain services
-  - `ProgressReporter`: 進捗報告の抽象化
+  - `ProgressReporter`: Progress reporting abstraction
 
 **Example:**
 
@@ -65,7 +65,7 @@ Orchestrates use cases and application logic.
 **Modules:**
 
 - `application::services`: Application services
-  - `ReportGenerator`: レポート生成サービス
+  - `ReportGenerator`: Report generation service
 
 **Example:**
 
@@ -100,22 +100,22 @@ Implements interfaces to external systems.
 
 **Modules:**
 
-- `infrastructure::cache`: キャッシュ実装
-  - `CommitCache` trait: キャッシュの抽象化
-  - `FileCache`: ファイルベースキャッシュ（~/.cache/nenpo/）
-  - `NoOpCache`: キャッシュなし実装（テスト用）
+- `infrastructure::cache`: Cache implementation
+  - `CommitCache` trait: Cache abstraction
+  - `FileCache`: File-based cache (~/.cache/nenpo/)
+  - `NoOpCache`: No-cache implementation (for testing)
 - `infrastructure::config`: TOML configuration file handling
-  - `TomlConfigRepository`: TOML設定ファイルの読み込み
+  - `TomlConfigRepository`: TOML configuration file loading
 - `infrastructure::github`: GitHub integration
-  - `GhCommandExecutor`: `gh`コマンドの実行
-  - `GhCommandRepository`: GitHub GraphQL APIの呼び出し
-  - `RetryHandler`: API制限時のリトライロジック
-- `infrastructure::document`: ローカルドキュメント読み込み
-  - `LocalFileDocumentRepository`: Globパターンでファイル読み込み
-- `infrastructure::output`: 出力実装
-  - `MarkdownOutputRepository`: Markdown形式での出力
-  - `JsonOutputRepository`: JSON形式での出力
-  - `HtmlOutputRepository`: HTML形式での出力
+  - `GhCommandExecutor`: `gh` command execution
+  - `GhCommandRepository`: GitHub GraphQL API calls
+  - `RetryHandler`: Retry logic for API rate limits
+- `infrastructure::document`: Local document loading
+  - `LocalFileDocumentRepository`: File loading with glob patterns
+- `infrastructure::output`: Output implementation
+  - `MarkdownOutputRepository`: Markdown format output
+  - `JsonOutputRepository`: JSON format output
+  - `HtmlOutputRepository`: HTML format output
 
 **Example:**
 
@@ -136,7 +136,7 @@ where
 impl<E, P, C> GitHubRepository for GhCommandRepository<E, P, C> {
     fn fetch_commits(&self, org_or_user: &str, from: NaiveDate, to: NaiveDate)
         -> Result<Vec<Commit>> {
-        // ページネーション、リトライ、キャッシュを含む実装
+        // Implementation with pagination, retry, and caching
     }
 }
 ```
@@ -195,42 +195,42 @@ Presentation → Application → Domain ← Infrastructure
 
 ```text
 src/
-├── main.rs                          # エントリーポイント
-├── presentation/                    # プレゼンテーション層
-│   └── cli.rs                       # CLIインターフェース定義
-├── application/                     # アプリケーション層
+├── main.rs                          # Entry point
+├── presentation/                    # Presentation layer
+│   └── cli.rs                       # CLI interface definition
+├── application/                     # Application layer
 │   └── services/
-│       └── report_generator.rs     # レポート生成サービス
-├── domain/                          # ドメイン層
-│   ├── entities/                    # エンティティ
-│   │   ├── commit.rs               # コミット情報
-│   │   ├── config.rs               # 設定
-│   │   ├── department.rs           # 部門
-│   │   ├── document_content.rs     # ドキュメント内容
-│   │   ├── github_activity.rs      # GitHub活動
-│   │   └── report.rs               # レポート
-│   ├── repositories/                # リポジトリトレイト
-│   │   ├── config_repository.rs    # 設定リポジトリ
-│   │   ├── document_repository.rs  # ドキュメントリポジトリ
-│   │   ├── github_repository.rs    # GitHubリポジトリ
-│   │   └── output_repository.rs    # 出力リポジトリ
-│   ├── services/                    # ドメインサービス
-│   │   └── progress_reporter.rs    # 進捗レポーター
-│   └── value_objects/               # 値オブジェクト
-│       ├── commit_theme.rs         # コミットテーマ
-│       └── output_format.rs        # 出力フォーマット
-└── infrastructure/                  # インフラストラクチャ層
-    ├── cache/                       # キャッシュ実装
-    │   └── commit_cache.rs         # コミットキャッシュ
-    ├── config/                      # 設定実装
+│       └── report_generator.rs     # Report generation service
+├── domain/                          # Domain layer
+│   ├── entities/                    # Entities
+│   │   ├── commit.rs               # Commit information
+│   │   ├── config.rs               # Configuration
+│   │   ├── department.rs           # Department
+│   │   ├── document_content.rs     # Document content
+│   │   ├── github_activity.rs      # GitHub activity
+│   │   └── report.rs               # Report
+│   ├── repositories/                # Repository traits
+│   │   ├── config_repository.rs    # Configuration repository
+│   │   ├── document_repository.rs  # Document repository
+│   │   ├── github_repository.rs    # GitHub repository
+│   │   └── output_repository.rs    # Output repository
+│   ├── services/                    # Domain services
+│   │   └── progress_reporter.rs    # Progress reporter
+│   └── value_objects/               # Value objects
+│       ├── commit_theme.rs         # Commit theme
+│       └── output_format.rs        # Output format
+└── infrastructure/                  # Infrastructure layer
+    ├── cache/                       # Cache implementation
+    │   └── commit_cache.rs         # Commit cache
+    ├── config/                      # Configuration implementation
     │   └── toml_config_repository.rs
-    ├── document/                    # ドキュメント実装
+    ├── document/                    # Document implementation
     │   └── local_file_document_repository.rs
-    ├── github/                      # GitHub実装
-    │   ├── command_executor.rs     # コマンド実行
-    │   ├── gh_command_repository.rs # GitHub API実装
-    │   └── retry_handler.rs        # リトライ処理
-    └── output/                      # 出力実装
+    ├── github/                      # GitHub implementation
+    │   ├── command_executor.rs     # Command execution
+    │   ├── gh_command_repository.rs # GitHub API implementation
+    │   └── retry_handler.rs        # Retry handling
+    └── output/                      # Output implementation
         ├── html_output_repository.rs
         ├── json_output_repository.rs
         └── markdown_output_repository.rs

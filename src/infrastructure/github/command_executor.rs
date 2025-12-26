@@ -94,8 +94,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn MockCommandExecutorが正しく動作する() {
+    fn mock_command_executor_works_correctly() {
         let mock = MockCommandExecutor::new().with_response("gh api test", r#"{"data": "test"}"#);
 
         let result = mock.execute("gh", &["api", "test"]).expect("Failed");

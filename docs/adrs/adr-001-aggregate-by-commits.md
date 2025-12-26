@@ -1,69 +1,69 @@
-# ADR-001: Conventional Commitsによるテーマ別コミット集計
+# ADR-001: Theme-Based Commit Aggregation Using Conventional Commits
 
-## ステータス
+## Status
 
 - [ ] Proposed
 - [x] Accepted
 - [ ] Deprecated
 
-## コンテキスト
+## Context
 
-年次報告書において、単なるコミット数だけでなく、「どのような種類の活動を行ったか」を可視化したい。
+In annual reports, we want to visualize not just the number of commits, but "what kind of activities were performed."
 
-### 背景
+### Background
 
-- GitHubのコミット数は量的な指標として有用だが、質的な側面が見えない
-- 「新機能開発が多かったのか」「バグ修正が多かったのか」を把握したい
-- 手動でコミットメッセージを分類するのは現実的ではない
+- GitHub commit count is useful as a quantitative metric, but qualitative aspects are not visible
+- We want to understand whether "there were many new feature developments" or "many bug fixes"
+- Manual classification of commit messages is not realistic
 
-### 要求事項
+### Requirements
 
-1. コミットメッセージから自動的にテーマを抽出
-2. テーマごとの集計を年次報告書に含める
-3. 業界標準の規約に準拠
-4. 形式に従わないコミットも適切に処理
+1. Automatically extract themes from commit messages
+2. Include theme-based aggregation in annual reports
+3. Comply with industry-standard conventions
+4. Handle commits that don't follow the format appropriately
 
-## 決定事項
+## Decision
 
-### 1. Conventional Commitsを採用
+### 1. Adopt Conventional Commits
 
-**理由**:
+**Rationale**:
 
-- 業界標準として広く採用されている
-- Angular、Electron、Vue.jsなど多くのOSSプロジェクトで使用
-- セマンティックバージョニングとの親和性が高い
-- 明確な仕様が定義されている
+- Widely adopted as an industry standard
+- Used by many OSS projects including Angular, Electron, and Vue.js
+- High compatibility with semantic versioning
+- Clear specification is defined
 
-**形式**:
+**Format**:
 
 ```text
 <type>(<scope>): <subject>
 
 type: feat, fix, docs, refactor, test, chore, style, ci, build
-scope: 任意（省略可）
-subject: 変更内容の簡潔な説明
+scope: optional (can be omitted)
+subject: brief description of changes
 ```
 
-### 2. サポートするテーマ
+### 2. Supported Themes
 
-以下の9種類のテーマ + Otherカテゴリを定義：
+Define the following 9 theme types + Other category:
 
-| Type | テーマ | 説明 | 例 |
+| Type | Theme | Description | Example |
 | :--- | :--- | :--- | :--- |
-| `feat` | New Features | 新機能追加 | `feat: add user authentication` |
-| `fix` | Bug Fixes | バグ修正 | `fix: resolve login issue` |
-| `docs` | Documentation | ドキュメント更新 | `docs: update README` |
-| `refactor` | Refactoring | リファクタリング | `refactor: simplify auth logic` |
-| `test` | Tests | テスト追加・修正 | `test: add unit tests` |
-| `chore` | Chores | 雑務・依存関係更新 | `chore: update dependencies` |
-| `style` | Code Style | コードスタイル修正 | `style: format code` |
-| `ci` | CI/CD | CI/CD設定変更 | `ci: add GitHub Actions` |
-| `build` | Build System | ビルドシステム変更 | `build: update webpack` |
-| - | Other | 上記以外 | その他のコミット |
+| `feat` | New Features | New feature addition | `feat: add user authentication` |
+| `fix` | Bug Fixes | Bug fix | `fix: resolve login issue` |
+| `docs` | Documentation | Documentation update | `docs: update README` |
+| `refactor` | Refactoring | Refactoring | `refactor: simplify auth logic` |
+| `test` | Tests | Add/modify tests | `test: add unit tests` |
+| `chore` | Chores | Chores, dependency updates | `chore: update dependencies` |
+| `style` | Code Style | Code style fixes | `style: format code` |
+| `ci` | CI/CD | CI/CD configuration changes | `ci: add GitHub Actions` |
+| `build` | Build System | Build system changes | `build: update webpack` |
+| - | Other | Other than above | Other commits |
 
-### 3. 実装方針
+### 3. Implementation Strategy
 
-#### 3.1 値オブジェクトとして実装
+#### 3.1 Implement as Value Object
 
 ```rust
 // src/domain/value_objects/commit_theme.rs
@@ -82,13 +82,13 @@ pub enum CommitTheme {
 }
 ```
 
-**理由**:
+**Rationale**:
 
-- ドメイン層の不変な概念として表現
-- パターンマッチングでコンパイル時の安全性を確保
-- シリアライズ/デシリアライズ対応（JSON/キャッシュ用）
+- Express as an immutable concept in the domain layer
+- Ensure compile-time safety through pattern matching
+- Support serialization/deserialization (for JSON/caching)
 
-#### 3.2 大文字小文字を区別しない
+#### 3.2 Case-Insensitive
 
 ```rust
 impl CommitTheme {
@@ -99,12 +99,12 @@ impl CommitTheme {
 }
 ```
 
-**理由**:
+**Rationale**:
 
-- 人間の入力ミスに寛容
-- `Feat:`, `FEAT:`, `feat:` すべて同じテーマとして扱う
+- Tolerant of human input errors
+- Treat `Feat:`, `FEAT:`, `feat:` all as the same theme
 
-#### 3.3 括弧付きスコープに対応
+#### 3.3 Support Scopes in Parentheses
 
 ```rust
 if lower_message.starts_with("feat:") || lower_message.starts_with("feat(") {
@@ -112,22 +112,22 @@ if lower_message.starts_with("feat:") || lower_message.starts_with("feat(") {
 }
 ```
 
-**理由**:
+**Rationale**:
 
-- `feat(api): add endpoint` のような形式も標準的
-- スコープの有無に関わらず同じテーマとして分類
+- Formats like `feat(api): add endpoint` are also standard
+- Classify as the same theme regardless of scope presence
 
-#### 3.4 デフォルトはOther
+#### 3.4 Default to Other
 
-形式に従わないコミットは `Other` カテゴリに分類。
+Commits that don't follow the format are classified as `Other` category.
 
-**理由**:
+**Rationale**:
 
-- エラーとして扱わない（寛容な設計）
-- すべてのコミットを集計対象にする
-- 既存のプロジェクトでも利用可能
+- Don't treat as errors (tolerant design)
+- Include all commits in aggregation
+- Available for existing projects
 
-### 4. 集計処理の実装
+### 4. Aggregation Processing Implementation
 
 ```rust
 // src/application/services/report_generator.rs
@@ -141,18 +141,19 @@ fn build_theme_summary(commits: &[Commit]) -> HashMap<CommitTheme, u32> {
 }
 ```
 
-**特徴**:
+**Features**:
 
-- シンプルなループ処理
-- `HashMap` で O(1) のカウント更新
-- イミュータブルなCommitオブジェクトから抽出
+- Simple loop processing
+- O(1) count updates with `HashMap`
+- Extract from immutable Commit objects
 
-### 5. 出力形式
+### 5. Output Format
 
 #### Markdown
 
 ```markdown
 ### Commit Themes
+
 - Other: 211
 - Bug Fixes: 173
 - New Features: 170
@@ -180,11 +181,11 @@ fn build_theme_summary(commits: &[Commit]) -> HashMap<CommitTheme, u32> {
 }
 ```
 
-## 結果
+## Consequences
 
-### 実績（connect0459、2025年）
+### Results (connect0459, 2025)
 
-849コミットを以下のように分類：
+Classified 849 commits as follows:
 
 - Other: 211 (24.9%)
 - Bug Fixes: 173 (20.4%)
@@ -197,89 +198,89 @@ fn build_theme_summary(commits: &[Commit]) -> HashMap<CommitTheme, u32> {
 - CI/CD: 8 (0.9%)
 - Code Style: 5 (0.6%)
 
-### 効果
+### Effects
 
-1. **質的な可視化**: 単なる「コミット数1,441件」から、「新機能170件、バグ修正173件」という具体的な活動内容が明確に
-2. **プロジェクトの特性理解**: ドキュメント作成が全体の16.5%を占めていることが判明
-3. **既存プロジェクトでも利用可能**: Conventional Commitsに完全準拠していないプロジェクトでも、部分的にテーマを抽出できる（Otherカテゴリで吸収）
+1. **Qualitative Visualization**: From simply "1,441 commits" to specific activity details like "170 new features, 173 bug fixes"
+2. **Project Characteristics Understanding**: Discovered that documentation accounts for 16.5% of all work
+3. **Available for Existing Projects**: Even for projects not fully compliant with Conventional Commits, themes can be partially extracted (absorbed by Other category)
 
-### 制限事項
+### Limitations
 
-1. **日本語コミットメッセージへの対応**: 現在は英語の `feat:`, `fix:` 等のみ対応。日本語の「機能:」「修正:」などは未対応
-2. **複数行コミットメッセージ**: 最初の行のみを解析（一般的なConventional Commitsの慣習に従う）
-3. **詳細なスコープ解析**: `feat(api)` のスコープ部分は無視（テーマ分類のみ）
+1. **Japanese Commit Message Support**: Currently only supports English `feat:`, `fix:`, etc. Japanese equivalents like "機能:", "修正:" are not supported
+2. **Multi-Line Commit Messages**: Only analyzes the first line (following common Conventional Commits practice)
+3. **Detailed Scope Analysis**: Scope portion of `feat(api)` is ignored (theme classification only)
 
-## 参考資料
+## References
 
 - [Conventional Commits Specification](https://www.conventionalcommits.org/)
 - [Angular Commit Message Guidelines](https://github.com/angular/angular/blob/main/CONTRIBUTING.md#commit)
 - [Semantic Versioning 2.0.0](https://semver.org/)
 
-## 関連ファイルのパス
+## Related File Paths
 
-### Phase 2 実装時 (2025-01-26)
+### Phase 2 Implementation (2025-01-26)
 
-#### ドメイン層
+#### Domain Layer
 
-- `src/domain/value_objects/commit_theme.rs` (新規)
-  - CommitTheme enum定義
-  - from_commit_message() メソッド実装
-  - display_name(), short_name() メソッド実装
-- `src/domain/entities/commit.rs` (新規)
-  - Commit エンティティ定義
-  - SHA、メッセージ、作成者、日時、リポジトリ情報を保持
-- `src/domain/entities/report.rs` (変更)
-  - theme_summary フィールド追加: `HashMap<CommitTheme, u32>`
-  - theme_summary() getter追加
+- `src/domain/value_objects/commit_theme.rs` (new)
+  - CommitTheme enum definition
+  - from_commit_message() method implementation
+  - display_name(), short_name() method implementation
+- `src/domain/entities/commit.rs` (new)
+  - Commit entity definition
+  - Holds SHA, message, author, date, repository info
+- `src/domain/entities/report.rs` (modified)
+  - Added theme_summary field: `HashMap<CommitTheme, u32>`
+  - Added theme_summary() getter
 
-#### アプリケーション層
+#### Application Layer
 
-- `src/application/services/report_generator.rs` (変更)
-  - build_theme_summary() メソッド追加
-  - fetch_commits() 呼び出し追加
-  - テーマ集計ロジック統合
+- `src/application/services/report_generator.rs` (modified)
+  - Added build_theme_summary() method
+  - Added fetch_commits() call
+  - Integrated theme aggregation logic
 
-#### インフラ層
+#### Infrastructure Layer
 
-- `src/infrastructure/output/markdown_output_repository.rs` (変更)
-  - Commit Themes セクション追加
-  - テーマを件数の多い順にソート表示
-- `src/infrastructure/output/json_output_repository.rs` (変更)
-  - theme_summary を JSON に自動シリアライズ（serde）
-- `src/infrastructure/output/html_output_repository.rs` (変更)
-  - Commit Themes セクション追加（HTML形式）
+- `src/infrastructure/output/markdown_output_repository.rs` (modified)
+  - Added Commit Themes section
+  - Sort and display themes by count in descending order
+- `src/infrastructure/output/json_output_repository.rs` (modified)
+  - Automatically serialize theme_summary to JSON (serde)
+- `src/infrastructure/output/html_output_repository.rs` (modified)
+  - Added Commit Themes section (HTML format)
 
-#### テスト
+#### Tests
 
 - `src/domain/value_objects/commit_theme.rs` (tests module)
-  - コミットメッセージからテーマを抽出できる
-  - 大文字小文字を区別しない
-  - 形式に従わないコミットはOtherになる
-  - 短縮名を取得できる
-  - 表示名を取得できる
+  - Can extract theme from commit message
+  - Case-insensitive
+  - Non-conforming commits become Other
+  - Can get short name
+  - Can get display name
 - `src/application/services/report_generator.rs` (tests module)
-  - コミットメッセージからテーマ別要約を構築できる
+  - Can build theme summary from commit messages
 
-### テストカバレッジ
+### Test Coverage
 
 - `src/domain/value_objects/commit_theme.rs`: 81.74%
 - `src/domain/entities/commit.rs`: 100%
 - `src/application/services/report_generator.rs`: 87.83%
 
-## 今後の拡張可能性
+## Future Extensibility
 
-### 1. 日本語対応
+### 1. Japanese Support
 
 ```rust
-// 将来的な実装案
+// Future implementation idea
 if lower_message.starts_with("機能:") || lower_message.starts_with("feat:") {
     CommitTheme::Feat
 }
 ```
 
-### 2. カスタムテーマ
+### 2. Custom Themes
 
-設定ファイルで独自のテーマを定義可能にする：
+Allow defining custom themes in configuration file:
 
 ```toml
 [custom_themes]
@@ -287,7 +288,7 @@ perf = "Performance"
 security = "Security"
 ```
 
-### 3. スコープ別集計
+### 3. Aggregation by Scope
 
 ```json
 {
@@ -304,6 +305,6 @@ security = "Security"
 }
 ```
 
-### 4. 時系列推移
+### 4. Time Series Trends
 
-月別・週別のテーマ分布を可視化。
+Visualize theme distribution by month/week.

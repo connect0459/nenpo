@@ -86,8 +86,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 設定を作成できる() {
+    fn creates_config() {
         let config = Config::new(4, OutputFormat::Markdown, "./reports".to_string(), vec![]);
 
         assert_eq!(config.default_fiscal_year_start_month(), 4);
@@ -97,10 +96,9 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 部門を含む設定を作成できる() {
+    fn creates_config_with_departments() {
         let department = Department::new(
-            "個人".to_string(),
+            "Personal".to_string(),
             4,
             vec!["connect0459".to_string()],
             vec![],
@@ -114,12 +112,11 @@ mod tests {
         );
 
         assert_eq!(config.departments().len(), 1);
-        assert_eq!(config.departments()[0].name(), "個人");
+        assert_eq!(config.departments()[0].name(), "Personal");
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn target_github_userを含む設定を作成できる() {
+    fn creates_config_with_target_github_user() {
         let config = Config::with_target_user(
             Some("connect0459".to_string()),
             4,
@@ -133,8 +130,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn target_github_userがNoneの場合() {
+    fn creates_config_with_none_target_github_user() {
         let config = Config::with_target_user(
             None,
             4,

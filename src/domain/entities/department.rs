@@ -67,15 +67,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn 部門を作成できる() {
+    fn creates_department() {
         let department = Department::new(
-            "個人".to_string(),
+            "Personal".to_string(),
             4,
             vec!["connect0459".to_string()],
             vec![],
         );
 
-        assert_eq!(department.name(), "個人");
+        assert_eq!(department.name(), "Personal");
         assert_eq!(department.fiscal_year_start_month(), 4);
         assert_eq!(
             department.github_organizations(),
@@ -85,13 +85,13 @@ mod tests {
     }
 
     #[test]
-    fn 年度開始月が1から12の範囲外の場合はエラーになる() {
+    fn panics_when_fiscal_year_start_month_is_out_of_range() {
         let result =
-            std::panic::catch_unwind(|| Department::new("テスト".to_string(), 0, vec![], vec![]));
+            std::panic::catch_unwind(|| Department::new("Test".to_string(), 0, vec![], vec![]));
         assert!(result.is_err());
 
         let result =
-            std::panic::catch_unwind(|| Department::new("テスト".to_string(), 13, vec![], vec![]));
+            std::panic::catch_unwind(|| Department::new("Test".to_string(), 13, vec![], vec![]));
         assert!(result.is_err());
     }
 }

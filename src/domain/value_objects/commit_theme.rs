@@ -92,8 +92,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn コミットメッセージからテーマを抽出できる() {
+    fn extracts_theme_from_commit_message() {
         assert_eq!(
             CommitTheme::from_commit_message("feat: add new feature"),
             CommitTheme::Feat
@@ -117,8 +116,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 大文字小文字を区別しない() {
+    fn parses_case_insensitively() {
         assert_eq!(
             CommitTheme::from_commit_message("FEAT: Add New Feature"),
             CommitTheme::Feat
@@ -130,8 +128,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 形式に従わないコミットはOtherになる() {
+    fn returns_other_for_non_conventional_commits() {
         assert_eq!(
             CommitTheme::from_commit_message("add new feature"),
             CommitTheme::Other
@@ -143,16 +140,14 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 表示名を取得できる() {
+    fn returns_display_name() {
         assert_eq!(CommitTheme::Feat.display_name(), "New Features");
         assert_eq!(CommitTheme::Fix.display_name(), "Bug Fixes");
         assert_eq!(CommitTheme::Docs.display_name(), "Documentation");
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 短縮名を取得できる() {
+    fn returns_short_name() {
         assert_eq!(CommitTheme::Feat.short_name(), "feat");
         assert_eq!(CommitTheme::Fix.short_name(), "fix");
         assert_eq!(CommitTheme::Docs.short_name(), "docs");

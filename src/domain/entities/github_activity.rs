@@ -63,8 +63,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn GitHub活動データを作成できる() {
+    fn creates_github_activity() {
         let activity = GitHubActivity::new(100, 20, 15, 30);
 
         assert_eq!(activity.commits(), 100);
@@ -74,8 +73,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn ゼロの活動データを作成できる() {
+    fn creates_github_activity_with_zeros() {
         let activity = GitHubActivity::new(0, 0, 0, 0);
 
         assert_eq!(activity.commits(), 0);
@@ -85,8 +83,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 活動データを加算できる() {
+    fn adds_activities() {
         let activity1 = GitHubActivity::new(100, 20, 15, 30);
         let activity2 = GitHubActivity::new(50, 10, 5, 15);
 

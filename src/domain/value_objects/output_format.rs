@@ -39,8 +39,7 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 文字列からOutputFormatに変換できる() {
+    fn parses_string_to_output_format() {
         assert_eq!(
             OutputFormat::from_str("markdown").expect("Failed to parse markdown"),
             OutputFormat::Markdown
@@ -56,15 +55,13 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 無効な文字列からの変換はエラーになる() {
+    fn returns_error_for_invalid_string() {
         assert!(OutputFormat::from_str("invalid").is_err());
         assert!(OutputFormat::from_str("pdf").is_err());
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn OutputFormatを文字列に変換できる() {
+    fn converts_output_format_to_string() {
         assert_eq!(OutputFormat::Markdown.as_str(), "markdown");
         assert_eq!(OutputFormat::Json.as_str(), "json");
         assert_eq!(OutputFormat::Html.as_str(), "html");

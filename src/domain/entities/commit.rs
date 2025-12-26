@@ -65,8 +65,7 @@ mod tests {
     use chrono::TimeZone;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn コミットを作成できる() {
+    fn creates_commit() {
         let date = Utc.with_ymd_and_hms(2024, 1, 15, 10, 30, 0).unwrap();
         let commit = Commit::new(
             "abc123".to_string(),
@@ -84,8 +83,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn コミットをクローンできる() {
+    fn clones_commit() {
         let date = Utc.with_ymd_and_hms(2024, 1, 15, 10, 30, 0).unwrap();
         let commit = Commit::new(
             "abc123".to_string(),
@@ -100,8 +98,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn コミットをシリアライズできる() {
+    fn serializes_commit() {
         let date = Utc.with_ymd_and_hms(2024, 1, 15, 10, 30, 0).unwrap();
         let commit = Commit::new(
             "abc123".to_string(),

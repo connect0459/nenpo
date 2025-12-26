@@ -199,8 +199,7 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn キャッシュが存在しない場合はNoneを返す() {
+    fn returns_none_when_cache_does_not_exist() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let cache = FileCache::with_cache_dir(temp_dir.path().to_path_buf())
             .expect("Failed to create cache");
@@ -215,8 +214,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn コミットをキャッシュに保存して取得できる() {
+    fn stores_and_retrieves_commits_from_cache() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let cache = FileCache::with_cache_dir(temp_dir.path().to_path_buf())
             .expect("Failed to create cache");
@@ -256,8 +254,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn キャッシュをクリアできる() {
+    fn clears_cache() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let cache = FileCache::with_cache_dir(temp_dir.path().to_path_buf())
             .expect("Failed to create cache");
@@ -286,8 +283,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 異なるパラメータで別々にキャッシュされる() {
+    fn caches_separately_for_different_parameters() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let cache = FileCache::with_cache_dir(temp_dir.path().to_path_buf())
             .expect("Failed to create cache");

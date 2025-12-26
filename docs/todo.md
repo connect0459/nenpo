@@ -1,197 +1,197 @@
 # todo
 
-## Phase 1: MVP ✅ 完了
+## Phase 1: MVP ✅ Completed
 
-- [x] プロジェクトの初期化
-- [x] Cargo.tomlの修正（edition、依存クレート追加）
-- [x] アーキテクチャ設計のドキュメント化
-- [x] オニオンアーキテクチャのディレクトリ構造作成
-- [x] 設定ファイル読み込み機能の実装（TDD）
-  - [x] Departmentエンティティ
-  - [x] OutputFormat値オブジェクト
-  - [x] Configエンティティ
-  - [x] ConfigRepositoryトレイト
-  - [x] TomlConfigRepository実装
-- [x] GitHubデータ取得機能の実装（TDD）
-  - [x] GitHubActivityエンティティ
-  - [x] GitHubRepositoryトレイト
-  - [x] GhCommandRepository実装（Phase 1: ダミーデータ）
-- [x] Markdown出力機能の実装（TDD）
-  - [x] Reportエンティティ
-  - [x] OutputRepositoryトレイト
-  - [x] MarkdownOutputRepository実装
-- [x] CLIコマンドの実装
-  - [x] CLI構造定義（clap）
-  - [x] generateコマンド実装
+- [x] Project initialization
+- [x] Cargo.toml modification (edition, dependency crates)
+- [x] Architecture design documentation
+- [x] Onion architecture directory structure creation
+- [x] Configuration file reading functionality (TDD)
+  - [x] Department entity
+  - [x] OutputFormat value object
+  - [x] Config entity
+  - [x] ConfigRepository trait
+  - [x] TomlConfigRepository implementation
+- [x] GitHub data fetching functionality (TDD)
+  - [x] GitHubActivity entity
+  - [x] GitHubRepository trait
+  - [x] GhCommandRepository implementation (Phase 1: dummy data)
+- [x] Markdown output functionality (TDD)
+  - [x] Report entity
+  - [x] OutputRepository trait
+  - [x] MarkdownOutputRepository implementation
+- [x] CLI command implementation
+  - [x] CLI structure definition (clap)
+  - [x] generate command implementation
 
-## Phase 2: 拡張
+## Phase 2: Extensions
 
-- [x] 実際のGitHubデータ取得（gh コマンド実行）
-  - [x] CommandExecutorトレイト定義
-  - [x] GraphQL API実装
-  - [x] MockCommandExecutorによるテスト
-- [x] ローカルドキュメント読み込み
-  - [x] DocumentContentエンティティ
-  - [x] DocumentRepositoryトレイト
-  - [x] LocalFileDocumentRepository実装
-  - [x] Reportエンティティへのドキュメント情報追加
-  - [x] Markdown出力へのドキュメントセクション追加
-- [x] 複数部門のサポート
-  - [x] ReportGeneratorサービス実装
-  - [x] 複数部門ループ処理
-  - [x] 部門フィルタ機能
-  - [x] 年度期間計算
-  - [x] main.rsへの統合
-- [x] JSON/HTML形式での出力
-  - [x] JsonOutputRepository実装
-  - [x] HtmlOutputRepository実装
-  - [x] ReportGeneratorにファイル拡張子パラメータ追加
-  - [x] main.rsでフォーマット選択機能
-- [x] Conventional Commitsによるテーマ別要約
-  - [x] CommitTheme値オブジェクト実装
-  - [x] Reportエンティティにtheme_summaryフィールド追加
-  - [x] Markdown出力にCommit Themesセクション追加
-  - [x] HTML出力にCommit Themesセクション追加
-  - [x] JSON出力にtheme_summaryが含まれることを確認（serdeで自動対応）
-  - [x] 実際のコミットメッセージ取得（Phase 2 完全実装: 基本機能）
-    - [x] Commitエンティティ実装（SHA、メッセージ、作成者、日時、リポジトリ名）
-    - [x] GitHubRepositoryトレイトに`fetch_commits()`メソッド追加
-    - [x] GraphQLクエリ拡張（ページネーション対応）
-    - [x] GhCommandRepositoryでコミット取得実装（再帰的ページネーション）
-    - [x] MockCommandExecutor改良（複数レスポンス対応）
-    - [x] ReportGeneratorでtheme_summary構築処理追加
-    - [x] テスト作成（コミット取得、ページネーション、テーマ別要約）
-  - [x] Phase 2 完全実装: 最適化機能 ✅
-    - [x] 進捗表示機能（ProgressReporterトレイト）
-      - [x] ProgressReporterトレイト定義
-      - [x] StdoutProgressReporter実装
-      - [x] NoOpProgressReporter実装
-      - [x] GhCommandRepositoryに統合
-    - [x] エラーハンドリング強化（API制限エラー、リトライ処理）
-      - [x] RetryConfigとwith_retry関数実装
-      - [x] 指数バックオフによるリトライロジック
-      - [x] API rate limitエラー検出と自動リトライ
-      - [x] GraphQLエラーハンドリング（organization不在時のユーザーデータ取得）
-    - [x] キャッシュ機能（~/.cache/nenpo/にJSON保存）
-      - [x] CommitCacheトレイト定義
-      - [x] FileCache実装（~/.cache/nenpo/）
-      - [x] NoOpCache実装
-      - [x] GhCommandRepositoryに統合
-      - [x] main.rsでFileCache有効化
-      - [x] キャッシュヒット時の高速読み込み確認
-    - [ ] 並列処理最適化（tokio非同期処理）※保留
-    - [x] 統合テスト実施（89.51%カバレッジ達成、目標80%超過）✅
-      - [x] cargo-llvm-covによるカバレッジ計測
-      - [x] 全57テスト成功
-      - [x] pre-commit checks全て通過
-    - [x] 実際のGitHubデータで動作確認 ✅
-      - [x] 849コミット取得成功（ページネーション動作確認）
-      - [x] 進捗表示機能動作確認
-      - [x] キャッシュ機能動作確認（2回目実行で高速化）
-      - [x] Markdown/JSON/HTML全形式での出力確認
-      - [x] Conventional Commitsテーマ集計動作確認
-    - [x] 注意事項: API制限（認証済み5,000req/h）、大規模プロジェクトのメモリ消費
+- [x] Actual GitHub data fetching (gh command execution)
+  - [x] CommandExecutor trait definition
+  - [x] GraphQL API implementation
+  - [x] Testing with MockCommandExecutor
+- [x] Local document reading
+  - [x] DocumentContent entity
+  - [x] DocumentRepository trait
+  - [x] LocalFileDocumentRepository implementation
+  - [x] Add document information to Report entity
+  - [x] Add document section to Markdown output
+- [x] Multiple department support
+  - [x] ReportGenerator service implementation
+  - [x] Multiple department loop processing
+  - [x] Department filter functionality
+  - [x] Fiscal year period calculation
+  - [x] Integration into main.rs
+- [x] JSON/HTML format output
+  - [x] JsonOutputRepository implementation
+  - [x] HtmlOutputRepository implementation
+  - [x] Add file extension parameter to ReportGenerator
+  - [x] Format selection functionality in main.rs
+- [x] Theme-based summary by Conventional Commits
+  - [x] CommitTheme value object implementation
+  - [x] Add theme_summary field to Report entity
+  - [x] Add Commit Themes section to Markdown output
+  - [x] Add Commit Themes section to HTML output
+  - [x] Verify theme_summary is included in JSON output (automatic via serde)
+  - [x] Actual commit message fetching (Phase 2 full implementation: basic features)
+    - [x] Commit entity implementation (SHA, message, author, date, repository name)
+    - [x] Add `fetch_commits()` method to GitHubRepository trait
+    - [x] GraphQL query extension (pagination support)
+    - [x] Commit fetching implementation in GhCommandRepository (recursive pagination)
+    - [x] MockCommandExecutor improvement (multiple response support)
+    - [x] Add theme_summary building process in ReportGenerator
+    - [x] Create tests (commit fetching, pagination, theme-based summary)
+  - [x] Phase 2 full implementation: optimization features ✅
+    - [x] Progress display functionality (ProgressReporter trait)
+      - [x] ProgressReporter trait definition
+      - [x] StdoutProgressReporter implementation
+      - [x] NoOpProgressReporter implementation
+      - [x] Integration into GhCommandRepository
+    - [x] Enhanced error handling (API rate limit errors, retry processing)
+      - [x] RetryConfig and with_retry function implementation
+      - [x] Retry logic with exponential backoff
+      - [x] API rate limit error detection and automatic retry
+      - [x] GraphQL error handling (user data fetching when organization is absent)
+    - [x] Cache functionality (JSON storage in ~/.cache/nenpo/)
+      - [x] CommitCache trait definition
+      - [x] FileCache implementation (~/.cache/nenpo/)
+      - [x] NoOpCache implementation
+      - [x] Integration into GhCommandRepository
+      - [x] FileCache activation in main.rs
+      - [x] Verify fast loading on cache hit
+    - [ ] Parallel processing optimization (tokio async processing) ※On hold
+    - [x] Integration testing (89.51% coverage achieved, exceeded 80% goal) ✅
+      - [x] Coverage measurement with cargo-llvm-cov
+      - [x] All 57 tests passed
+      - [x] All pre-commit checks passed
+    - [x] Verification with actual GitHub data ✅
+      - [x] Successfully fetched 849 commits (pagination verification)
+      - [x] Progress display functionality verification
+      - [x] Cache functionality verification (faster on 2nd run)
+      - [x] Output verification in all formats: Markdown/JSON/HTML
+      - [x] Conventional Commits theme aggregation verification
+    - [x] Notes: API limits (5,000 req/h authenticated), memory consumption for large projects
 
-## Phase 3: リポジトリ内コミット履歴のページネーション（ADR-003）
+## Phase 3: Pagination of Commit History Within Repositories (ADR-003)
 
-**背景**: 各リポジトリから最大100件しかコミットを取得できず、コミットの取りこぼしが発生している（voyagegroup/ecnaviで646件あるのに100件のみ取得）
+**Background**: Only fetching up to 100 commits from each repository, causing commit loss (voyagegroup/ecnavi has 646 commits but only 100 fetched)
 
-**関連ADR**: [ADR-003](adrs/adr-003-paginate-commits-within-repositories.md)
+**Related ADR**: [ADR-003](adrs/adr-003-paginate-commits-within-repositories.md)
 
-### Phase 3.1: 設計とデータ構造の準備 ✅
+### Phase 3.1: Design and Data Structure Preparation ✅
 
-- [x] CommitHistoryConnectionDetailedにpageInfo追加を確認
-- [x] PageInfo構造体の再利用性を確認
-- [x] GraphQLレスポンス構造の分析
-  - [x] 単一リポジトリのコミット履歴取得クエリをテスト
-  - [x] pageInfoとafterパラメータの動作確認
+- [x] Verify pageInfo added to CommitHistoryConnectionDetailed
+- [x] Verify PageInfo struct reusability
+- [x] GraphQL response structure analysis
+  - [x] Test single repository commit history fetch query
+  - [x] Verify pageInfo and after parameter behavior
 
-### Phase 3.2: GraphQLクエリの修正 ✅
+### Phase 3.2: GraphQL Query Modification ✅
 
-- [x] build_commits_query()の修正案を決定
-  - [x] Option B: build_repo_commits_query()を新規作成（単一リポジトリ用）
-- [x] 選択したオプションでクエリを実装
-  - [x] build_repo_commits_query() 作成
-  - [x] build_repositories_query() 作成
-  - [x] parse_repo_commits_response() 作成
-  - [x] parse_repositories_response() 作成
-- [x] クエリのテスト（手動でgh api graphqlで確認）
+- [x] Decide on build_commits_query() modification plan
+  - [x] Option B: Create build_repo_commits_query() (for single repository)
+- [x] Implement query with selected option
+  - [x] Create build_repo_commits_query()
+  - [x] Create build_repositories_query()
+  - [x] Create parse_repo_commits_response()
+  - [x] Create parse_repositories_response()
+- [x] Test query (manually verify with gh api graphql)
 
-### Phase 3.3: コアロジックの実装 ✅
+### Phase 3.3: Core Logic Implementation ✅
 
-- [x] fetch_commits()メソッドの修正
-  - [x] リポジトリリストの取得ループ（外側）を実装
-  - [x] 各リポジトリのコミット履歴のページネーションループ（内側）を追加
-  - [x] ネストしたループの実装
-  - [x] エラーハンドリング（既存のwith_retryを活用）
-- [x] 新しいパース関数の実装
-- [x] 進捗報告（既存のProgressReporterを活用）
+- [x] Modify fetch_commits() method
+  - [x] Implement repository list fetch loop (outer)
+  - [x] Add pagination loop for each repository's commit history (inner)
+  - [x] Implement nested loops
+  - [x] Error handling (utilize existing with_retry)
+- [x] Implement new parse functions
+- [x] Progress reporting (utilize existing ProgressReporter)
 
-### Phase 3.4: テストの追加 ✅
+### Phase 3.4: Add Tests ✅
 
-- [x] ユニットテストの追加
-  - [x] リポジトリ内コミットのページネーションをテスト
-  - [x] 100件を超えるコミットを持つリポジトリのテスト
-  - [x] ネストしたページネーションのテスト
-  - [x] pageInfoのhasNextPageがfalseの場合のテスト
-- [x] 既存テストの修正（2つのテストを新しい実装に対応）
-- [x] テストカバレッジの確認（88.42%、目標80%超過）
+- [x] Add unit tests
+  - [x] Test pagination within repository commits
+  - [x] Test repositories with over 100 commits
+  - [x] Test nested pagination
+  - [x] Test when pageInfo hasNextPage is false
+- [x] Modify existing tests (adapt 2 tests to new implementation)
+- [x] Verify test coverage (88.42%, exceeded 80% goal)
 
-### Phase 3.5: 統合テストと動作確認 ✅
+### Phase 3.5: Integration Testing and Verification ✅
 
-- [x] キャッシュをクリア
-- [x] voyagegroup組織でテスト実行
-  - [x] ecnaviリポジトリで646件すべて取得（期待値646と完全一致）
-  - [x] ecnavi-enquete-appで112件取得（以前は100件のみ）
-  - [x] 全リポジトリの合計: 887コミット（以前は329コミット、2.7倍増加）
-- [x] 空のリポジトリ対応（ict-nessus, lakebi_common, rmh-taskをスキップ）
-- [x] パフォーマンスの測定
-  - [x] API呼び出し回数: 約300回
-  - [x] 実行時間: 8分4秒
-  - [x] レート制限: 問題なし
+- [x] Clear cache
+- [x] Test execution with voyagegroup organization
+  - [x] Fetch all 646 commits from ecnavi repository (perfect match with expected value)
+  - [x] Fetch 112 commits from ecnavi-enquete-app (previously only 100)
+  - [x] Total across all repositories: 887 commits (previously 329 commits, 2.7x increase)
+- [x] Handle empty repositories (skip ict-nessus, lakebi_common, rmh-task)
+- [x] Measure performance
+  - [x] API calls: ~300
+  - [x] Execution time: 8 minutes 4 seconds
+  - [x] Rate limiting: No issues
 
-### Phase 3.6: ドキュメントとクリーンアップ ✅
+### Phase 3.6: Documentation and Cleanup ✅
 
-- [x] ADR-003のステータスを「Accepted」に更新
-- [x] ADR-003の実績セクションを実データで更新
-- [x] 実装時の学びをADRに追記
-- [x] Phase 3を完了としてマーク
+- [x] Update ADR-003 status to "Accepted"
+- [x] Update ADR-003 results section with actual data
+- [x] Document implementation learnings in ADR
+- [x] Mark Phase 3 as completed
 
-### 技術的な検討事項
+### Technical Considerations
 
-#### パフォーマンス最適化（将来の拡張）
+#### Performance Optimization (Future Extensions)
 
-- [ ] 並列処理の検討
-  - [ ] rayonを使った各リポジトリの並列取得
-  - [ ] API レート制限との兼ね合い
-- [ ] 増分キャッシュの検討
-  - [ ] リポジトリごとのキャッシュ保存
-  - [ ] 差分取得の実装
+- [ ] Consider parallel processing
+  - [ ] Parallel fetching of each repository using rayon
+  - [ ] Balance with API rate limits
+- [ ] Consider incremental caching
+  - [ ] Cache storage per repository
+  - [ ] Implement differential fetching
 
-#### エラーハンドリング
+#### Error Handling
 
-- [ ] リトライ機構の確認
-  - [ ] ネストループでのリトライ動作
-  - [ ] 部分的な失敗の処理（一部リポジトリでエラー）
-- [ ] タイムアウト処理
-  - [ ] 大量コミットを持つリポジトリでのタイムアウト対策
+- [ ] Verify retry mechanism
+  - [ ] Retry behavior in nested loops
+  - [ ] Handle partial failures (errors in some repositories)
+- [ ] Timeout handling
+  - [ ] Timeout countermeasures for repositories with large commit counts
 
-#### 品質保証
+#### Quality Assurance
 
-- [ ] エッジケースのテスト
-  - [ ] コミット数0のリポジトリ
-  - [ ] defaultBranchRefがnullのリポジトリ
-  - [ ] 100件ちょうどのコミットを持つリポジトリ
-- [ ] メモリ使用量の確認
-  - [ ] 大量コミットでのメモリ消費
-  - [ ] ストリーミング処理の検討（必要に応じて）
+- [ ] Edge case testing
+  - [ ] Repositories with 0 commits
+  - [ ] Repositories where defaultBranchRef is null
+  - [ ] Repositories with exactly 100 commits
+- [ ] Memory usage verification
+  - [ ] Memory consumption with large commit counts
+  - [ ] Consider streaming processing (if needed)
 
-### 完了条件 ✅
+### Completion Criteria ✅
 
-- [x] すべてのテストが通過（62 tests）
-- [x] voyagegroup/ecnaviで646件すべてのコミットが取得できる（646件取得）
-- [x] レポートのYour Commitsが正確な数値になる（887件）
-- [x] パフォーマンスが許容範囲内（8分4秒、レート制限問題なし）
-- [x] テストカバレッジ80%以上維持（88.42%）
-- [x] ADR-003のステータスが「Accepted」
-- [x] ドキュメント更新完了
+- [x] All tests pass (62 tests)
+- [x] All 646 commits can be fetched from voyagegroup/ecnavi (646 commits fetched)
+- [x] Your Commits in report shows accurate numbers (887 commits)
+- [x] Performance within acceptable range (8 min 4 sec, no rate limit issues)
+- [x] Test coverage maintained above 80% (88.42%)
+- [x] ADR-003 status is "Accepted"
+- [x] Documentation updates completed

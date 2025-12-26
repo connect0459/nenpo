@@ -157,8 +157,7 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn HTMLファイルにレポートを出力できる() {
+    fn outputs_report_to_html_file() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let output_path = temp_dir.path().join("test_report.html");
 
@@ -196,8 +195,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn ドキュメント付きのHTMLレポートを出力できる() {
+    fn outputs_html_report_with_documents() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let output_path = temp_dir.path().join("test_report_with_docs.html");
 
@@ -234,8 +232,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn ドキュメントがない場合はLocal_Documentsセクションを表示しない() {
+    fn does_not_show_local_documents_section_when_no_documents() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let output_path = temp_dir.path().join("test_report_no_docs.html");
 

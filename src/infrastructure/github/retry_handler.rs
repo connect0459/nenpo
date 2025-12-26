@@ -91,8 +91,7 @@ mod tests {
     use std::sync::{Arc, Mutex};
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 成功する操作はリトライなしで完了する() {
+    fn completes_successful_operation_without_retry() {
         let config = RetryConfig::default();
         let call_count = Arc::new(Mutex::new(0));
         let call_count_clone = call_count.clone();
@@ -108,8 +107,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 最大リトライ回数に達すると失敗する() {
+    fn fails_when_max_retry_count_reached() {
         let config = RetryConfig::new(2, 10, 1.0); // 短い遅延でテスト
         let call_count = Arc::new(Mutex::new(0));
         let call_count_clone = call_count.clone();
@@ -124,8 +122,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn リトライ可能なエラーで再試行される() {
+    fn retries_on_retryable_error() {
         let config = RetryConfig::new(3, 10, 1.0);
         let call_count = Arc::new(Mutex::new(0));
         let call_count_clone = call_count.clone();
@@ -146,8 +143,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn 非リトライエラーは即座に失敗する() {
+    fn fails_immediately_on_non_retryable_error() {
         let config = RetryConfig::default();
         let call_count = Arc::new(Mutex::new(0));
         let call_count_clone = call_count.clone();

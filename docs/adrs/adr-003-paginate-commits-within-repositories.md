@@ -1,28 +1,28 @@
-# ADR-003: リポジトリ内コミット履歴のページネーション実装
+# ADR-003: Pagination Implementation for Commit History Within Repositories
 
-## ステータス
+## Status
 
 - [x] Proposed
 - [x] Accepted (2025-12-26)
 - [ ] Deprecated
 
-## コンテキスト
+## Context
 
-### 背景
+### Background
 
-ADR-002でauthorフィルタを実装し、特定ユーザーのコミットのみを取得できるようになった。しかし、実際の運用で以下の問題が発見された：
+After implementing the author filter in ADR-002, we could fetch only commits by specific users. However, the following issue was discovered in actual operation:
 
-### 問題点
+### Problem
 
-**コミットの取りこぼし**が発生している：
+**Missing commits** are occurring:
 
-- `voyagegroup/ecnavi`リポジトリ: 646件のコミットがあるが、100件しか取得できていない
-- `voyagegroup/ecnavi-enquete-app`リポジトリ: 100件で打ち切られている
-- 合計: 329件しか取得できていない（実際はもっと多い）
+- `voyagegroup/ecnavi` repository: Has 646 commits but only 100 are fetched
+- `voyagegroup/ecnavi-enquete-app` repository: Truncated at 100 commits
+- Total: Only 329 commits fetched (actually much more)
 
-### 根本原因
+### Root Cause
 
-現在の実装では、各リポジトリのコミット履歴を取得する際に：
+In the current implementation, when fetching commit history for each repository:
 
 ```graphql
 history(first: 100, since: "...", until: "...", author: {...}) {
@@ -30,32 +30,32 @@ history(first: 100, since: "...", until: "...", author: {...}) {
 }
 ```
 
-- `first: 100`で最大100件しか取得していない
-- リポジトリのリスト自体はページネーションしているが、**各リポジトリ内のコミット履歴はページネーションしていない**
-- 結果として、コミット数が100件を超えるリポジトリでは、残りのコミットが取得されない
+- Only fetches maximum 100 commits with `first: 100`
+- While the repository list itself is paginated, **commit history within each repository is not paginated**
+- As a result, for repositories with more than 100 commits, the remaining commits are not fetched
 
-### 影響範囲
+### Impact Scope
 
-- connect0459の実績: voyagegroup組織で329件取得 → 実際は646件以上（ecnaviだけで）
-- 大規模リポジトリでの取りこぼしが発生
-- 年次レポートの精度が低下
+- connect0459's actual results: 329 commits fetched from voyagegroup organization → Actually 646+ commits (from ecnavi alone)
+- Missing commits in large repositories
+- Decreased accuracy of annual reports
 
-## 決定事項
+## Decision
 
-### 1. 各リポジトリのコミット履歴をページネーションする
+### 1. Paginate Commit History Within Each Repository
 
-各リポジトリの`history`クエリでも`pageInfo`を取得し、ネストしたループでページネーションを実装する。
+Fetch `pageInfo` in each repository's `history` query and implement pagination with nested loops.
 
-#### 修正前の構造
+#### Structure Before Fix
 
 ```rust
 loop {
-    // リポジトリのページネーション
+    // Repository pagination
     let query = build_commits_query(...);
     let repos = fetch_and_parse(...);
 
     for repo in repos {
-        // 各リポジトリから最大100件のコミットを取得（ページネーションなし）
+        // Fetch up to 100 commits from each repository (no pagination)
         commits.extend(repo.commits);
     }
 
@@ -63,15 +63,15 @@ loop {
 }
 ```
 
-#### 修正後の構造
+#### Structure After Fix
 
 ```rust
 loop {
-    // リポジトリのページネーション
+    // Repository pagination
     let repos = fetch_repositories(...);
 
     for repo in repos {
-        // 各リポジトリ内でコミット履歴をページネーション
+        // Paginate commit history within each repository
         loop {
             let commits = fetch_repo_commits(repo, cursor);
             all_commits.extend(commits);
@@ -84,9 +84,9 @@ loop {
 }
 ```
 
-### 2. GraphQLクエリの修正
+### 2. GraphQL Query Modification
 
-#### 修正前
+#### Before Fix
 
 ```graphql
 history(first: 100, since: "...", until: "...", author: {...}) {
@@ -99,7 +99,7 @@ history(first: 100, since: "...", until: "...", author: {...}) {
 }
 ```
 
-#### 修正後
+#### After Fix
 
 ```graphql
 history(first: 100, since: "...", until: "...", author: {...}, after: "cursor") {
@@ -116,18 +116,18 @@ history(first: 100, since: "...", until: "...", author: {...}, after: "cursor") 
 }
 ```
 
-### 3. 実装方針
+### 3. Implementation Strategy
 
-#### 3.1 アーキテクチャ
+#### 3.1 Architecture
 
-**2段階のページネーション**:
+**Two-level pagination**:
 
-1. **外側のループ**: リポジトリリストのページネーション（既存）
-2. **内側のループ**: 各リポジトリ内のコミット履歴のページネーション（新規）
+1. **Outer loop**: Repository list pagination (existing)
+2. **Inner loop**: Commit history pagination within each repository (new)
 
-#### 3.2 データ構造の変更
+#### 3.2 Data Structure Changes
 
-**CommitsRepository構造体**に`pageInfo`を追加:
+Add `pageInfo` to **CommitsRepository** structure:
 
 ```rust
 #[derive(Debug, Deserialize)]
@@ -150,14 +150,14 @@ struct CommitsTarget {
 #[derive(Debug, Deserialize)]
 struct CommitHistoryConnectionDetailed {
     #[serde(rename = "pageInfo")]
-    page_info: PageInfo,  // 既存
+    page_info: PageInfo,  // existing
     nodes: Vec<CommitNode>,
 }
 ```
 
-#### 3.3 クエリビルダーの修正
+#### 3.3 Query Builder Modification
 
-**リポジトリごとのコミット取得用クエリ**を追加:
+Add **query for fetching commits per repository**:
 
 ```rust
 fn build_repo_commits_query(
@@ -168,13 +168,13 @@ fn build_repo_commits_query(
     author_id: Option<&str>,
     after_cursor: Option<&str>,
 ) -> String {
-    // 単一リポジトリのコミット履歴を取得するクエリ
+    // Query to fetch commit history for a single repository
 }
 ```
 
-**または、既存のクエリを拡張**して、各リポジトリのhistoryにafterパラメータを追加。
+**Or, extend existing query** to add after parameter to each repository's history.
 
-#### 3.4 fetch_commits()メソッドの修正
+#### 3.4 Modify fetch_commits() Method
 
 ```rust
 fn fetch_commits(
@@ -190,7 +190,7 @@ fn fetch_commits(
         None
     };
 
-    // キャッシュチェック
+    // Check cache
     if let Some(ref cache) = self.cache {
         if let Some(cached) = cache.get(org_or_user, from, to, author)? {
             return Ok(cached);
@@ -200,16 +200,16 @@ fn fetch_commits(
     let mut all_commits = Vec::new();
     let mut repo_cursor: Option<String> = None;
 
-    // 外側のループ: リポジトリのページネーション
+    // Outer loop: Repository pagination
     loop {
         let repos_query = build_repos_query(org_or_user, repo_cursor.as_deref());
         let repos = fetch_and_parse_repos(&repos_query)?;
 
-        // 各リポジトリを処理
+        // Process each repository
         for repo in repos.nodes {
             let mut commit_cursor: Option<String> = None;
 
-            // 内側のループ: 各リポジトリのコミット履歴をページネーション
+            // Inner loop: Paginate commit history within each repository
             loop {
                 let commits_query = build_repo_commits_query(
                     org_or_user,
@@ -238,7 +238,7 @@ fn fetch_commits(
         }
     }
 
-    // キャッシュに保存
+    // Save to cache
     if let Some(ref cache) = self.cache {
         cache.set(org_or_user, from, to, author, &all_commits)?;
     }
@@ -247,70 +247,70 @@ fn fetch_commits(
 }
 ```
 
-### 4. 進捗報告の改善
+### 4. Progress Reporting Improvement
 
-リポジトリごとの進捗を報告:
+Report progress per repository:
 
 ```rust
 self.progress_reporter.report_repo_progress(repo_name, commit_count);
 ```
 
-### 5. パフォーマンス考慮事項
+### 5. Performance Considerations
 
-#### API呼び出し回数の増加
+#### Increased API Call Count
 
-- **修正前**: リポジトリページ数 × 1回
-- **修正後**: リポジトリページ数 × (各リポジトリのコミットページ数)
+- **Before fix**: Repository pages × 1 call
+- **After fix**: Repository pages × (commit pages per repository)
 
-**例**: voyagegroup組織（764リポジトリ）、ecnaviリポジトリ（646コミット = 7ページ）
+**Example**: voyagegroup organization (764 repositories), ecnavi repository (646 commits = 7 pages)
 
-- 修正前: 8ページ（リポジトリ100個ずつ）
-- 修正後: 8ページ（リポジトリ） + 7ページ（ecnaviのコミット） + α（他のリポジトリ）
+- Before fix: 8 pages (100 repositories each)
+- After fix: 8 pages (repositories) + 7 pages (ecnavi commits) + α (other repositories)
 
-#### レート制限対策
+#### Rate Limit Countermeasures
 
-- リトライ機構の活用（既存のwith_retry）
-- 必要に応じて遅延追加を検討
+- Utilize retry mechanism (existing with_retry)
+- Consider adding delays if necessary
 
-## 結果
+## Consequences
 
-### 期待される効果
+### Expected Effects
 
-1. **完全なコミット取得**: すべてのコミットを漏れなく取得
-2. **正確な統計**: 年次レポートの精度向上
-3. **スケーラビリティ**: コミット数に関わらず対応可能
+1. **Complete commit fetching**: Fetch all commits without missing any
+2. **Accurate statistics**: Improved annual report accuracy
+3. **Scalability**: Handle any number of commits
 
-### 実績
+### Results
 
-connect0459ユーザーのコミット数（2025年1月1日〜12月31日）：
+Commit counts for connect0459 user (Jan 1, 2025 - Dec 31, 2025):
 
-| 項目 | 修正前 | 修正後 | 増加率 |
+| Item | Before Fix | After Fix | Increase |
 | :--- | :--- | :--- | :--- |
-| voyagegroup全体 | 329件 | **887件** | **+169.6%** |
-| ecnavi | 100件 | **646件** | **+546.0%** |
-| ecnavi-enquete-app | 100件 | **112件** | **+12.0%** |
+| voyagegroup total | 329 | **887** | **+169.6%** |
+| ecnavi | 100 | **646** | **+546.0%** |
+| ecnavi-enquete-app | 100 | **112** | **+12.0%** |
 
-#### 主要な改善点
+#### Key Improvements
 
-1. **完全なコミット取得**: ecnaviリポジトリで646件（期待値646と完全一致）
-2. **大幅な増加**: voyagegroup組織全体で329件 → 887件（2.7倍）
-3. **空のリポジトリ対応**: デフォルトブランチがないリポジトリを適切にスキップ
-4. **パフォーマンス**: 8分4秒で完了（API呼び出し約300回）
+1. **Complete commit fetching**: 646 commits from ecnavi repository (perfect match with expected value)
+2. **Significant increase**: voyagegroup organization 329 → 887 commits (2.7x)
+3. **Empty repository handling**: Properly skip repositories without default branch
+4. **Performance**: Completed in 8 minutes 4 seconds (~300 API calls)
 
-## 実装時の学び
+## Implementation Learnings
 
-### 技術的な課題と解決策
+### Technical Challenges and Solutions
 
-1. **GraphQLクエリの分離**
-   - 当初は既存の`build_commits_query()`を拡張することを検討
-   - 最終的に2つの新しいクエリを作成：
-     - `build_repositories_query()`: リポジトリリストのみ取得
-     - `build_repo_commits_query()`: 単一リポジトリのコミット取得
-   - 理由: 各リポジトリに個別の`after`カーソルが必要なため
+1. **GraphQL Query Separation**
+   - Initially considered extending existing `build_commits_query()`
+   - Finally created two new queries:
+     - `build_repositories_query()`: Fetch repository list only
+     - `build_repo_commits_query()`: Fetch commits for single repository
+   - Reason: Each repository needs individual `after` cursor
 
-2. **空のリポジトリへの対応**
-   - 問題: `defaultBranchRef`が`null`のリポジトリでエラー発生
-   - 解決: `Option`パターンマッチで空のコミットリストを返し、警告を出力
+2. **Handling Empty Repositories**
+   - Problem: Error occurs for repositories with `null` `defaultBranchRef`
+   - Solution: Return empty commit list with `Option` pattern matching and output warning
 
    ```rust
    let Some(branch_ref) = repository.default_branch_ref else {
@@ -319,65 +319,65 @@ connect0459ユーザーのコミット数（2025年1月1日〜12月31日）：
    };
    ```
 
-3. **テストの修正**
-   - 既存のテストが新しい2段階ページネーションに対応していなかった
-   - 各テストで2つのレスポンスをモック（リポジトリリスト + コミット）
-   - 新しいテスト2つ追加：
-     - `リポジトリ内コミットのページネーションをテストできる()`
-     - `ネストしたページネーションをテストできる()`
+3. **Test Modifications**
+   - Existing tests didn't support new two-level pagination
+   - Mock two responses per test (repository list + commits)
+   - Added two new tests:
+     - `can_test_pagination_within_repository_commits()`
+     - `can_test_nested_pagination()`
 
-4. **PageInfo構造体の拡張**
-   - `Clone`トレイトを追加してデータの受け渡しを容易に
+4. **PageInfo Structure Extension**
+   - Added `Clone` trait to facilitate data passing
 
-### パフォーマンスとAPI使用量
+### Performance and API Usage
 
-- **API呼び出し回数**: 約300回（voyagegroup組織の場合）
-  - リポジトリリスト取得: 約8回（100リポジトリずつ）
-  - 各リポジトリのコミット取得: 多数（コミット数に応じて）
-- **実行時間**: 8分4秒
-- **レート制限**: 問題なし（既存のリトライ機構が有効）
+- **API call count**: ~300 calls (for voyagegroup organization)
+  - Repository list fetch: ~8 times (100 repositories each)
+  - Commit fetch per repository: Many (depending on commit count)
+- **Execution time**: 8 minutes 4 seconds
+- **Rate limiting**: No issues (existing retry mechanism effective)
 
-### カバレッジとテスト品質
+### Coverage and Test Quality
 
-- **テストカバレッジ**: 88.42%（目標80%超過）
-- **テスト数**: 62個（2つ追加）
-- **全テスト通過**: ✅
+- **Test coverage**: 88.42% (exceeds 80% target)
+- **Test count**: 62 tests (2 added)
+- **All tests passing**: ✅
 
-## 参考資料
+## References
 
 - [GitHub GraphQL API - CommitHistoryConnection](https://docs.github.com/en/graphql/reference/objects#commithistoryconnection)
 - [GitHub GraphQL API - PageInfo](https://docs.github.com/en/graphql/reference/objects#pageinfo)
-- [ADR-002: 特定ユーザーのコミットのみを取得する機能](./adr-002-filter-commits-by-author.md)
+- [ADR-002: Feature to Fetch Commits by Specific User](./adr-002-filter-commits-by-author.md)
 
-## 関連ファイルのパス
+## Related File Paths
 
-### 初期実装時 (2025-12-26)
+### Initial Implementation (2025-12-26)
 
-#### インフラ層
+#### Infrastructure Layer
 
-- `src/infrastructure/github/gh_command_repository.rs` (変更)
-  - build_commits_query() の修正（historyにpageInfoとafterパラメータを追加）
-  - または build_repo_commits_query() の追加（単一リポジトリ用クエリ）
-  - fetch_commits() の修正（2段階ページネーション実装）
-  - parse_commits_response() の修正（pageInfo対応）
-  - CommitHistoryConnectionDetailed構造体の修正（pageInfo追加）
+- `src/infrastructure/github/gh_command_repository.rs` (modified)
+  - Modified build_commits_query() (added pageInfo and after parameter to history)
+  - Or added build_repo_commits_query() (query for single repository)
+  - Modified fetch_commits() (implemented two-level pagination)
+  - Modified parse_commits_response() (pageInfo support)
+  - Modified CommitHistoryConnectionDetailed structure (added pageInfo)
 
-#### テスト
+#### Tests
 
 - `src/infrastructure/github/gh_command_repository.rs` (tests module)
-  - リポジトリ内コミットのページネーションをテスト
-  - 100件を超えるコミットを持つリポジトリのテスト
-  - ネストしたページネーションのテスト
+  - Test pagination within repository commits
+  - Test repositories with over 100 commits
+  - Test nested pagination
 
-#### ドキュメント
+#### Documentation
 
-- `docs/adrs/adr-003-paginate-commits-within-repositories.md` (新規)
+- `docs/adrs/adr-003-paginate-commits-within-repositories.md` (new)
 
-## 今後の拡張可能性
+## Future Extensibility
 
-### 1. 並列処理
+### 1. Parallel Processing
 
-各リポジトリのコミット取得を並列化して、パフォーマンスを向上:
+Parallelize commit fetching for each repository to improve performance:
 
 ```rust
 use rayon::prelude::*;
@@ -387,9 +387,9 @@ repos.par_iter().map(|repo| {
 }).flatten().collect()
 ```
 
-### 2. 増分キャッシュ
+### 2. Incremental Caching
 
-リポジトリごとにキャッシュを保存し、次回は差分のみ取得:
+Save cache per repository, fetch only differences next time:
 
 ```json
 {
@@ -403,9 +403,9 @@ repos.par_iter().map(|repo| {
 }
 ```
 
-### 3. 進捗バーの詳細化
+### 3. Detailed Progress Bar
 
-リポジトリごとの進捗を表示:
+Display progress per repository:
 
 ```text
 Fetching commits for voyagegroup...

@@ -1,29 +1,29 @@
-# ADR-002: 特定ユーザーのコミットのみを取得する機能
+# ADR-002: Feature to Fetch Commits by Specific User
 
-## ステータス
+## Status
 
 - [ ] Proposed
 - [x] Accepted
 - [x] Implemented (2025-12-26)
 - [ ] Deprecated
 
-## コンテキスト
+## Context
 
-### 背景
+### Background
 
-年次報告書では、複数の組織（個人アカウント、STUDY FOR TWO、CARTA HOLDINGS等）における特定ユーザーの活動を集計したい。
+In annual reports, we want to aggregate activities of specific users across multiple organizations (personal account, STUDY FOR TWO, CARTA HOLDINGS, etc.).
 
-### 問題点
+### Problem
 
-Phase 2の初期実装では、組織のすべてのリポジトリのすべてのコミットを取得しようとしていた。これにより、以下の問題が発生：
+In the initial Phase 2 implementation, we attempted to fetch all commits from all repositories of an organization. This caused the following issues:
 
-1. **データ量の爆発**: voyagegroupのような大規模組織では、数千〜数万のコミットが存在
-2. **API制限**: GitHub GraphQL APIのレート制限に引っかかる可能性
-3. **パースエラー**: レスポンスサイズが大きすぎてJSONパースに失敗
-4. **処理時間**: 不要なコミットまで取得するため、処理時間が長い
-5. **不正確な集計**: 特定ユーザーの活動のみを知りたいのに、組織全体のコミットを取得していた
+1. **Data Explosion**: Large organizations like voyagegroup have thousands to tens of thousands of commits
+2. **API Limits**: Risk of hitting GitHub GraphQL API rate limits
+3. **Parse Errors**: Response size too large, causing JSON parsing failures
+4. **Processing Time**: Slow due to fetching unnecessary commits
+5. **Inaccurate Aggregation**: Wanted only a specific user's activities but fetched entire organization's commits
 
-### 実際のエラー
+### Actual Error
 
 ```text
 Fetching commits for voyagegroup...
@@ -32,26 +32,26 @@ Fetching commits for voyagegroup...
 Error: Failed to generate report: Failed to parse commits GraphQL response
 ```
 
-### 要求事項
+### Requirements
 
-設定ファイル `nenpo-config.toml` のコメント「connect0459の活動を3つの組織で集計」から：
+From the comment in `nenpo-config.toml` "Aggregate connect0459's activities across 3 organizations":
 
-- connect0459ユーザーが各組織で作成したコミットのみを集計
-- 組織内の他のユーザーのコミットは不要
-- 効率的にデータを取得（API制限を回避）
+- Aggregate only commits created by the connect0459 user in each organization
+- Commits by other users in the organization are unnecessary
+- Fetch data efficiently (avoid API limits)
 
-## 決定事項
+## Decision
 
-### 1. GitHub GraphQL APIのauthorフィルタを採用
+### 1. Adopt GitHub GraphQL API's author Filter
 
-**理由**:
+**Rationale**:
 
-- GitHub GraphQL APIの`history`クエリには`author`パラメータが存在
-- 特定ユーザーのコミットのみをサーバー側でフィルタリング可能
-- GitHub Search APIよりもレート制限が緩い
-- contributionsCollection APIはコミットメッセージを取得できない
+- GitHub GraphQL API's `history` query has an `author` parameter
+- Can filter commits by specific user on the server side
+- More lenient rate limits than GitHub Search API
+- contributionsCollection API cannot fetch commit messages
 
-**形式**:
+**Format**:
 
 ```graphql
 history(first: 100, since: "2025-01-01T00:00:00Z", until: "2025-12-31T23:59:59Z", author: {id: "MDQ6VXNlcjEyMzQ1Njc="}) {
@@ -66,31 +66,31 @@ history(first: 100, since: "2025-01-01T00:00:00Z", until: "2025-12-31T23:59:59Z"
 }
 ```
 
-### 2. 設定ファイルにtarget_github_user追加
+### 2. Add target_github_user to Configuration File
 
-組織の場合、特定ユーザーのコミットのみを取得するよう設定可能に：
+For organizations, enable fetching only commits by specific user:
 
 ```toml
 [global]
-# すべての組織で対象とするGitHubユーザー（オプショナル）
+# Target GitHub user for all organizations (optional)
 target_github_user = "connect0459"
 
 [[departments]]
 name = "CARTA HOLDINGS"
 github_organizations = ["voyagegroup"]
-# このフィールドでtarget_github_userを上書き可能（将来の拡張）
+# This field can override target_github_user (future extension)
 # target_github_user = "other_user"
 ```
 
-### 3. 実装方針
+### 3. Implementation Strategy
 
-#### 3.1 ドメイン層
+#### 3.1 Domain Layer
 
 **Config entity**:
 
 ```rust
 pub struct Config {
-    target_github_user: Option<String>,  // 新規フィールド
+    target_github_user: Option<String>,  // new field
     default_fiscal_year_start_month: u32,
     default_output_format: OutputFormat,
     output_directory: String,
@@ -107,14 +107,14 @@ pub trait GitHubRepository {
         org_or_user: &str,
         from: NaiveDate,
         to: NaiveDate,
-        author: Option<&str>,  // 新規パラメータ
+        author: Option<&str>,  // new parameter
     ) -> Result<Vec<Commit>>;
 }
 ```
 
-#### 3.2 インフラ層
+#### 3.2 Infrastructure Layer
 
-**ユーザーID取得**:
+**Fetch User ID**:
 
 ```rust
 fn fetch_user_id(&self, login: &str) -> Result<String> {
@@ -129,7 +129,7 @@ fn fetch_user_id(&self, login: &str) -> Result<String> {
 }
 ```
 
-**GraphQLクエリ修正**:
+**GraphQL Query Modification**:
 
 ```rust
 fn build_commits_query(
@@ -137,7 +137,7 @@ fn build_commits_query(
     from: NaiveDate,
     to: NaiveDate,
     after_cursor: Option<&str>,
-    author_id: Option<&str>,  // 新規パラメータ
+    author_id: Option<&str>,  // new parameter
 ) -> String {
     let author_param = author_id
         .map(|id| format!(", author: {{id: \"{}\"}}", id))
@@ -151,7 +151,7 @@ fn build_commits_query(
 }
 ```
 
-#### 3.3 アプリケーション層
+#### 3.3 Application Layer
 
 **ReportGenerator**:
 
@@ -160,71 +160,71 @@ let author = self.config_repository.get()?.target_github_user();
 self.github_repository.fetch_commits(org, from, to, author.as_deref())?;
 ```
 
-### 4. キャッシュ戦略
+### 4. Cache Strategy
 
-キャッシュファイル名にauthor情報を含める：
+Include author information in cache file name:
 
 ```text
 ~/.cache/nenpo/voyagegroup_20250101_20251231_connect0459_commits.json
 ```
 
-**理由**:
+**Rationale**:
 
-- 同じ組織でも、ユーザーが異なれば別のデータ
-- キャッシュの一意性を保証
+- Different data for same organization with different users
+- Ensure cache uniqueness
 
-## 結果
+## Consequences
 
-### 効果
+### Effects
 
-1. **データ量削減**: voyagegroupで数万コミット → 数百コミット（connect0459のみ）
-2. **API制限回避**: サーバー側フィルタリングにより、転送データ量が大幅削減
-3. **処理速度向上**: 不要なデータを取得しないため、高速化
-4. **正確な集計**: ユーザーの意図通り、特定ユーザーの活動のみを集計
-5. **エラー解消**: GraphQLレスポンスパースエラーが解消
+1. **Data Reduction**: voyagegroup from tens of thousands → hundreds of commits (connect0459 only)
+2. **API Limit Avoidance**: Server-side filtering drastically reduces transfer data
+3. **Processing Speed**: Faster by not fetching unnecessary data
+4. **Accurate Aggregation**: Aggregates only specific user's activities as intended
+5. **Error Resolution**: GraphQL response parse errors resolved
 
-### 実績
+### Results
 
-connect0459ユーザーのコミット数（2025年1月1日〜12月31日）：
+Commit counts for connect0459 user (Jan 1, 2025 - Dec 31, 2025):
 
-- 個人アカウント (connect0459): 842件
-- STUDY FOR TWO (study-for-two): 437件
-- CARTA HOLDINGS (voyagegroup): 329件（2025年度: 2025年4月1日〜2026年3月31日）
+- Personal account (connect0459): 842 commits
+- STUDY FOR TWO (study-for-two): 437 commits
+- CARTA HOLDINGS (voyagegroup): 329 commits (FY2025: Apr 1, 2025 - Mar 31, 2026)
 
-合計: 約1,608件（組織全体では数万件）
+Total: ~1,608 commits (tens of thousands in entire organizations)
 
-**効果測定**:
+**Impact Measurement**:
 
-- voyagegroup組織: 4,227件 → 329件（約92%削減）
-- データ取得の成功率: 100%（以前は大量データでパースエラー）
+- voyagegroup organization: 4,227 → 329 commits (~92% reduction)
+- Data fetch success rate: 100% (previously had parse errors with large data)
 
-### 制限事項
+### Limitations
 
-1. **GitHub user ID取得**: 初回実行時に追加のGraphQLクエリが必要
-2. **キャッシュ無効化**: authorが変わった場合、キャッシュをクリアする必要がある
-3. **複数ユーザー**: 現在の実装では1ユーザーのみ対応（将来の拡張で複数対応可能）
+1. **GitHub user ID fetch**: Requires additional GraphQL query on first run
+2. **Cache invalidation**: Need to clear cache if author changes
+3. **Multiple users**: Current implementation supports only 1 user (future extension possible for multiple)
 
-### 実装時の問題と解決
+### Implementation Issues and Solutions
 
-#### 問題: TomlConfigRepositoryがtarget_github_userを読み込んでいなかった
+#### Issue: TomlConfigRepository Was Not Reading target_github_user
 
-**発見経緯**:
+**Discovery**:
 
-実装完了後の動作確認で、voyagegroup組織から依然として大量のコミット（2892件、4888件）が取得され、author filterが適用されていないことが判明。調査の結果、`TomlConfig`構造体に`target_github_user`フィールドが存在せず、設定ファイルから読み込まれていなかった。
+After implementation completion, during verification, large amounts of commits (2892, 4888) were still being fetched from voyagegroup organization, indicating author filter was not being applied. Investigation revealed that `TomlConfig` struct did not have `target_github_user` field and was not reading from config file.
 
-**症状**:
+**Symptoms**:
 
 ```text
 Fetching commits for voyagegroup...
-  2892 commits fetched from voyagegroup...  # author filterが効いていない
+  2892 commits fetched from voyagegroup...  # author filter not working
   4888 commits fetched from voyagegroup...
 Error: Failed to parse commits GraphQL response
 ```
 
-**原因**:
+**Cause**:
 
 ```rust
-// 修正前: TomlConfig構造体にtarget_github_userフィールドが存在しない
+// Before fix: TomlConfig struct missing target_github_user field
 struct TomlConfig {
     default_fiscal_year_start_month: u32,
     default_output_format: String,
@@ -232,7 +232,7 @@ struct TomlConfig {
     departments: Vec<TomlDepartment>,
 }
 
-// Config::new()を使用（target_github_userを受け取らない）
+// Using Config::new() (doesn't accept target_github_user)
 Ok(Config::new(
     toml_config.default_fiscal_year_start_month,
     output_format,
@@ -241,13 +241,13 @@ Ok(Config::new(
 ))
 ```
 
-**解決方法**:
+**Solution**:
 
-1. `TomlConfig`構造体に`target_github_user`フィールドを追加：
+1. Add `target_github_user` field to `TomlConfig` struct:
 
 ```rust
 struct TomlConfig {
-    #[serde(default)]  // オプショナルフィールド
+    #[serde(default)]  // optional field
     target_github_user: Option<String>,
     default_fiscal_year_start_month: u32,
     default_output_format: String,
@@ -256,11 +256,11 @@ struct TomlConfig {
 }
 ```
 
-1. `Config::with_target_user()`を使用するように変更：
+2. Change to use `Config::with_target_user()`:
 
 ```rust
 Ok(Config::with_target_user(
-    toml_config.target_github_user,  // 追加
+    toml_config.target_github_user,  // added
     toml_config.default_fiscal_year_start_month,
     output_format,
     toml_config.output_directory,
@@ -268,11 +268,11 @@ Ok(Config::with_target_user(
 ))
 ```
 
-1. テストを追加：
+3. Add test:
 
 ```rust
 #[test]
-fn target_github_userを含む設定を読み込める() {
+fn can_load_config_with_target_github_user() {
     let toml_content = r#"
 target_github_user = "connect0459"
 default_fiscal_year_start_month = 1
@@ -285,71 +285,71 @@ output_directory = "./reports"
 }
 ```
 
-**結果**: 修正後、author filterが正しく適用され、voyagegroup組織で329件のコミット（connect0459のみ）が正常に取得できるようになった。
+**Result**: After fix, author filter was properly applied, successfully fetching only 329 commits (connect0459 only) from voyagegroup organization.
 
-## 参考資料
+## References
 
 - [GitHub GraphQL API - CommitHistoryConnection](https://docs.github.com/en/graphql/reference/objects#commithistoryconnection)
 - [GitHub GraphQL API - CommitAuthor](https://docs.github.com/en/graphql/reference/input-objects#commitauthor)
-- [ADR-001: Conventional Commitsによるテーマ別コミット集計](./adr-001-aggregate-by-commits.md)
+- [ADR-001: Theme-Based Commit Aggregation Using Conventional Commits](./adr-001-aggregate-by-commits.md)
 
-## 関連ファイルのパス
+## Related File Paths
 
-### 初期実装時 (2025-12-26)
+### Initial Implementation (2025-12-26)
 
-#### ドメイン層
+#### Domain Layer
 
-- `src/domain/entities/config.rs` (target_github_user フィールド追加)
-- `src/domain/repositories/github_repository.rs` (fetch_commits に author 引数追加)
+- `src/domain/entities/config.rs` (added target_github_user field)
+- `src/domain/repositories/github_repository.rs` (added author argument to fetch_commits)
 
-#### インフラ層
+#### Infrastructure Layer
 
-- `src/infrastructure/github/gh_command_repository.rs` (変更)
-  - fetch_user_id() メソッド追加
-  - build_commits_query() に author_id パラメータ追加
-  - fetch_commits() 実装修正
-- `src/infrastructure/cache/commit_cache.rs` (変更)
-  - キャッシュファイル名に author 情報を含める
+- `src/infrastructure/github/gh_command_repository.rs` (modified)
+  - Added fetch_user_id() method
+  - Added author_id parameter to build_commits_query()
+  - Modified fetch_commits() implementation
+- `src/infrastructure/cache/commit_cache.rs` (modified)
+  - Include author information in cache file name
 
-#### アプリケーション層
+#### Application Layer
 
-- `src/application/services/report_generator.rs` (変更)
-  - fetch_commits() 呼び出し時に author を渡す
+- `src/application/services/report_generator.rs` (modified)
+  - Pass author when calling fetch_commits()
 
-#### 設定
+#### Configuration
 
-- `src/infrastructure/config/toml_config_repository.rs` (変更)
-  - TomlConfig構造体に target_github_user フィールドを追加
-  - Config::with_target_user() を使用するように変更
-  - target_github_user を含む設定を読み込むテストを追加
+- `src/infrastructure/config/toml_config_repository.rs` (modified)
+  - Added target_github_user field to TomlConfig struct
+  - Changed to use Config::with_target_user()
+  - Added test to load config with target_github_user
 
-#### テスト
+#### Tests
 
 - `src/domain/entities/config.rs` (tests module)
-  - target_github_user を含む設定を作成できる
-  - target_github_user が None の場合
+  - Can create config with target_github_user
+  - Case when target_github_user is None
 - `src/infrastructure/config/toml_config_repository.rs` (tests module)
-  - target_github_user を含む設定を読み込める
-  - target_github_user がない設定でも読み込める（後方互換性）
+  - Can load config with target_github_user
+  - Can load config without target_github_user (backward compatibility)
 - `src/infrastructure/github/gh_command_repository.rs` (tests module)
-  - ユーザーIDを取得できる
-  - 特定ユーザーのコミットのみを取得できる
-  - authorなしでもコミットを取得できる（後方互換性）
+  - Can fetch user ID
+  - Can fetch commits by specific user only
+  - Can fetch commits without author (backward compatibility)
 
-#### ドキュメント
+#### Documentation
 
-- `nenpo-config.toml.example` (target_github_user 設定例追加)
-- `README.md` (target_github_user の説明追加)
+- `nenpo-config.toml.example` (added target_github_user example)
+- `README.md` (added target_github_user description)
 
-## 今後の拡張可能性
+## Future Extensibility
 
-### 1. 部門ごとのtarget_user設定
+### 1. Per-Department target_user Setting
 
 ```toml
 [[departments]]
 name = "Team A"
 github_organizations = ["org-a"]
-target_github_user = "user_a"  # 部門ごとに異なるユーザー
+target_github_user = "user_a"  # different user per department
 
 [[departments]]
 name = "Team B"
@@ -357,16 +357,16 @@ github_organizations = ["org-b"]
 target_github_user = "user_b"
 ```
 
-### 2. 複数ユーザーのサポート
+### 2. Multiple User Support
 
 ```toml
 [global]
 target_github_users = ["connect0459", "other_user"]
 ```
 
-### 3. Issueとdraft PRのフィルタリング
+### 3. Issue and Draft PR Filtering
 
-現在はコミットのみだが、IssueやPRも同様にauthorでフィルタリング可能：
+Currently commits only, but Issues and PRs can be similarly filtered by author:
 
 ```graphql
 issues(first: 100, filterBy: {createdBy: "connect0459"}) {

@@ -86,8 +86,7 @@ mod tests {
     use tempfile::TempDir;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn Markdownファイルにレポートを出力できる() {
+    fn outputs_report_to_markdown_file() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let output_path = temp_dir.path().join("test_report.md");
 
@@ -120,8 +119,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn ドキュメント付きのレポートを出力できる() {
+    fn outputs_report_with_documents() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let output_path = temp_dir.path().join("test_report_with_docs.md");
 
@@ -158,8 +156,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn ドキュメントがない場合はLocal_Documentsセクションを表示しない() {
+    fn does_not_show_local_documents_section_when_no_documents() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let output_path = temp_dir.path().join("test_report_no_docs.md");
 

@@ -89,15 +89,14 @@ mod tests {
     use super::*;
 
     #[test]
-    #[allow(non_snake_case)]
-    fn レポートを作成できる() {
+    fn creates_report() {
         let activity = GitHubActivity::new(100, 20, 15, 30);
         let from = NaiveDate::from_ymd_opt(2024, 4, 1).expect("Invalid date");
         let to = NaiveDate::from_ymd_opt(2025, 3, 31).expect("Invalid date");
 
         let report = Report::new(
             2024,
-            "個人".to_string(),
+            "Personal".to_string(),
             from,
             to,
             activity.clone(),
@@ -106,7 +105,7 @@ mod tests {
         );
 
         assert_eq!(report.year(), 2024);
-        assert_eq!(report.department_name(), "個人");
+        assert_eq!(report.department_name(), "Personal");
         assert_eq!(report.period_from(), from);
         assert_eq!(report.period_to(), to);
         assert_eq!(report.github_activity(), &activity);
@@ -114,8 +113,7 @@ mod tests {
     }
 
     #[test]
-    #[allow(non_snake_case)]
-    fn ドキュメント付きでレポートを作成できる() {
+    fn creates_report_with_documents() {
         let activity = GitHubActivity::new(100, 20, 15, 30);
         let from = NaiveDate::from_ymd_opt(2024, 4, 1).expect("Invalid date");
         let to = NaiveDate::from_ymd_opt(2025, 3, 31).expect("Invalid date");
@@ -127,7 +125,7 @@ mod tests {
 
         let report = Report::new(
             2024,
-            "個人".to_string(),
+            "Personal".to_string(),
             from,
             to,
             activity,
