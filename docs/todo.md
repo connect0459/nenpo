@@ -12,6 +12,9 @@
   - [x] Configエンティティ
   - [x] ConfigRepositoryトレイト
   - [x] TomlConfigRepository実装
-- [ ] GitHubデータ取得機能の実装（TDD）
+- [x] GitHubデータ取得機能の実装（TDD）
+  - [x] GitHubActivityエンティティ
+  - [x] GitHubRepositoryトレイト
+  - [x] GhCommandRepository実装（Phase 1: ダミーデータ）
 - [ ] Markdown出力機能の実装（TDD）
 - [ ] CLIコマンドの実装
